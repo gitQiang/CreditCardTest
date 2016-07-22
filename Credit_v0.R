@@ -40,9 +40,27 @@ fields_scores <- function(fields1){
 
 getBreaks <- function(){
         #航空字段的得分 
+        hangkongziduan <- as.matrix( read.csv("航空数据衍生指标得分划分.csv") )
+        ziduan <- setdiff(unique(hangkongziduan[,1]),"")
+        for(i in 1:nrow(hangkongziduan)){
+                if(hangkongziduan[i,1]==""){
+                        hangkongziduan[i,1] <- hangkongziduan[i-1,1]
+                }
+        }
+        hangkongziduan[,"上界"] <- gsub("infty","Inf",hangkongziduan[,"上界"])
         
+        breas <- list()
+        labels <- list()
+        for(i in 1:length(ziduan)){
+                tmpsubs <- which(hangkongziduan[,1]==ziduan[i])
+                tmp <- as.vector(hangkongziduan[tmpsubs,c("下界","上界")])
+                breas[[i]] <- sort(unique(as.numeric(tmp)))
+                labels[[i]] <- as.numeric(hangkongziduan[tmpsubs,"得分"])
+        }
+        names(breas) <- ziduan
         
-        
+        list(breas=breas,labels=labels)
+
 }
 
 trees_construct <- function(){
