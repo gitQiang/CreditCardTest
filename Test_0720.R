@@ -32,6 +32,12 @@ a3 <- union(a1,a2)
 write.csv(a3,file="Dictionary_HQ_raw_v0.csv",quote=FALSE,row.names = FALSE)
 
 
+aa <- unlist(read.csv("Dictionary_HQ_raw_v0.csv"))
+aa <- gsub("移动","",aa)
+aa <- gsub("联通","",aa)
+aa <- sort(unique(aa))
+write.csv(aa,file="Dictionary_HQ_raw_v1.csv",quote=FALSE,row.names = FALSE)
+
 
 ### 处理字段的区间到得分的映射表=======================================
 setwd("D:/data/中行个人征信/中行个人征信共享")
