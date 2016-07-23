@@ -6,12 +6,15 @@ Credit_v0 <- function(fields0){
         
         ## step 0: 由字符串解析出原始字段； 函数： ；原始字段表见文件：
         
+        fields0 <- c(1,0.5,0.5,1,1,3,3,1,5,50000,1800,3000,9000,0.15,1,0,1,3,1,40,1,0.6,5,6,5,0.8)
+        
         
         ## step 1: 由原始字段到衍生字段； 函数：transform_fileds； 衍生字段表见文件：
-        # fields1 <-  transform_fileds(fields0)
+        fields1 <-  transform_fileds(fields0)
+        fields1 <- fields1[1:72]
         
         ## step 2: 提取每个衍生字段的具体打分； 函数：fields_scores； 衍生字段具体打分表见文件：
-        fields1 <- c(1,0.5,0.5,1,1,3,3,1,5,50000,1800,3000,9000,0.15,1,0,1,3,1,40,1,0.6,5,6,5,0.8)
+        #fields1 <- c(1,0.5,0.5,1,1,3,3,1,5,50000,1800,3000,9000,0.15,1,0,1,3,1,40,1,0.6,5,6,5,0.8)
         scores1 <- fields_scores(fields1)
         scores1 <- as.numeric(as.vector(scores1))
         
@@ -30,11 +33,101 @@ Credit_v0 <- function(fields0){
 
 transform_fileds <- function(fields0){
         
+        ## 金融画像远期原始字段到衍生字段映射
         n <- 0
+        fields1[n+1] <- fields0[n+9]/fields0[n+8]
+        fields1[n+2] <- fields0[n+2]
+        fields1[n+3] <- fields0[n+10]
+        fields1[n+4] <- 0
+        fields1[n+5] <- fields0[n+35]
+        fields1[n+6] <- fields0[n+17]
+        fields1[n+7] <- fields0[n+16]
+        fields1[n+8] <- fields0[n+2]/fields0[n+35]
+        fields1[n+9] <- fields0[n+10]/fields0[n+17]
+        fields1[n+10] <- 0
+        fields1[n+11] <- fields0[n+4]/fields0[n+10]
+        fields1[n+12] <- fields0[n+15]/fields0[n+17]
+        fields1[n+13] <- fields0[n+3]
+        fields1[n+14] <- fields0[n+1]
+        fields1[n+15] <- fields0[n+36]
         
+        #lvyuenengli
+        fields1[n+16] <- fields0[n+8]/fields0[n+12]
+        fields1[n+17] <- fields0[n+7]/fields0[n+12]
+        fields1[n+18] <- fields0[n+9]/fields0[n+12]
+        fields1[n+19] <- (fields0[n+10]+fields0[n+17])/12
+        fields1[n+20] <- (fields0[n+15]+fields0[n+4])/12
+        fields1[n+21] <- fields0[n+17]/fields0[n+16]
+        fields1[n+22] <- fields0[n+16]/12
+        fields1[n+23] <- fields0[n+6]/12
+        fields1[n+24] <- fields0[n+5]/12
+        fields1[n+25] <- fields0[n+8]/(fields0[n+17]+fields0[n+6])
+        fields1[n+26] <- (fields0[n+10]+fields0[n+17])/(fields0[n+17]+fields0[n+6])
+        fields1[n+27] <- fields0[n+37]
+        fields1[n+28] <- fields0[n+8]
+        fields1[n+29] <- fields0[n+9]
+        
+        #shehuiguanxi
+        fields1[n+30] <- fields0[n+38]
+        fields1[n+31] <- fields0[n+39]
+        
+        #shenfentezhi
+        ##fields1[n+32] <- shenfentezhi(nianling)
+        ##fields1[n+33] <- juzhudi
+        
+        fields1[n+32] <- 0
+        fields1[n+33] <- 0
+        
+        #xinyonglishi
+        fields1[n+34] <- fields0[n+35]
+        fields1[n+35] <- fields0[n+34]
+        fields1[n+36] <- fields0[n+17]/fields0[n+12]
+        fields1[n+37] <- fields0[n+16]/fields0[n+12]
+        fields1[n+38] <- fields0[n+15]/fields0[n+17]
+        fields1[n+39] <- fields0[n+17]/fields0[n+16]
+        fields1[n+40] <- fields0[n+39]
+        fields1[n+41] <- fields0[n+12]/12
+        fields1[n+42] <- fields0[n+11]/12
+        fields1[n+43] <- fields0[n+12]/fields0[n+18]
+        
+        
+        ## 金融画像近期原始字段到衍生字段映射
+        n <- 43
+        fields1[n+1] <- fields0[n+24]/fields0[n+23]
+        fields1[n+2] <- fields0[n+24]/fields0[n+9]
+        fields1[n+3] <- fields0[n+25]/fields0[n+17]
+        fields1[n+4] <- 0
+        fields1[n+5] <- fields0[n+19]/fields0[n+25]
+        fields1[n+6] <- fields0[n+30]/fields0[n+17]
+        fields1[n+7] <- fields0[n+23]
+        fields1[n+8] <- fields0[n+22]
+        fields1[n+9] <- (fields0[n+23]/fields0[n+3])/(fields0[n+8]/fields0[n+12])
+        fields1[n+10] <- (fields0[n+22]/fields0[n+3])/(fields0[n+7]/fields0[n+12])
+        fields1[n+11] <- fields0[n+32]+fields0[n+21]
+        fields1[n+12] <- fields0[n+31]+fields0[n+20]
+        fields1[n+13] <- ((fields0[n+32]+fields0[n+21])/fields0[n+3])/((fields0[n+17]+fields0[n+6])/fields0[n+12])
+        fields1[n+14] <- ((fields0[n+31]+fields0[n+20])/fields0[n+3])/((fields0[n+16]+fields0[n+5])/fields0[n+12])
+        fields1[n+15] <- (fields[n+23]/(fields0[n+32]+fields0[n+21]))/(fields0[n+8]/(fields0[n+6]+fields0[n+17]))
+        fields1[n+16] <- fields0[n+23]/(fields0[n+32]+fields0[n+21])
+        fields1[n+17] <- ((fields0[n+32]+fields0[n+25])/(fields0[n+32]+fields0[n+21]))/((fields0[n+17]+fields0[n+10])/(fields0[n+17]+fields0[n+6]))
+        fields1[n+18] <- (fields0[n+32]+fields0[n+25])/(fields0[n+32]+fields0[n+21])
+        fields1[n+19] <- fields0[n+37]
+        fields1[n+20] <- 0
+        fields1[n+21] <- 0
+        fields1[n+22] <- 0
+        fields1[n+23] <- 0
+        fields1[n+24] <- fields0[n+32]
+        fields1[n+25] <- fields0[n+31]
+        fields1[n+26] <- (fields0[n+32]/fields0[n+3])/(fields0[n+17]/fields0[n+12])
+        fields1[n+27] <- (fields0[n+31]/fields0[n+3])(fields0[n+16]/fields0[n+12])
+        fields1[n+28] <- fields0[n+27]/fields0[n+33]
+        fields1[n+29] <- (fields0[n+27]/fields0[n+33])/(fields0[n+12]/fields0[n+18])
+        
+
         ## 航空原始字段到衍生字段映射
+        n <- 72
         speflag <- c(1:5,19:21,23:26)
-        fields1[n+speflag] <- fields0[n+speflag]
+        fields1[n+speflag] <- 0.5  #fields0[n+speflag]
         fields1[n+6] <- fields0[n+10]
         fields1[n+7] <- fields0[n+11]
         fields1[n+8] <- fields0[n+10]/fields0[n+11]
@@ -51,67 +144,89 @@ transform_fileds <- function(fields0){
         fields1[n+22] <- fields0[n+2]/fields0[n+1]
         
         
-        ## 金融画像远期原始字段到衍生字段映射
-        
-        
-        
-        ## 金融画像近期原始字段到衍生字段映射
-        
-        
-        
         fields1
-              
 }
 
 fields_scores <- function(fields1){
 
         #options(stringsAsFactors=FALSE)
-        
-        #航空字段的得分  
+        ## 金融画像的得分
         tmp <- getBreaks()
         breaksL <- tmp$breas
         labelsL <- tmp$labels
         
-        ### only for test
-        for(i in 1:length(breaksL)){
-                if(any(is.na(labelsL[[i]])) ){
-                        breaksL[[i]] <- c(-1,1)
-                        labelsL[[i]] <- 1
-                        }
-                }
-        
-        HangkongScore <- sapply(1:length(fields1), function(i){ 
+        JinrongScore <- sapply(1:length(fields1), function(i){ 
                 #print(i)
                 cut(as.numeric(fields1[i]), breaksL[[i]],labelsL[[i]])
-                })
+        })
         
         
-        scores1 <- HangkongScore
+        scores1 <- JinrongScore
+               
+        # #航空字段的得分  
+        # tmp <- getBreaks()
+        # breaksL <- tmp$breas
+        # labelsL <- tmp$labels
+        # 
+        # ### only for test
+        # for(i in 1:length(breaksL)){
+        #         if(any(is.na(labelsL[[i]])) ){
+        #                 breaksL[[i]] <- c(-1,1)
+        #                 labelsL[[i]] <- 1
+        #                 }
+        #         }
+        # 
+        # HangkongScore <- sapply(1:length(fields1), function(i){ 
+        #         #print(i)
+        #         cut(as.numeric(fields1[i]), breaksL[[i]],labelsL[[i]])
+        #         })
+        # 
+        # 
+        # scores1 <- HangkongScore
+        
         scores1
 }
 
 getBreaks <- function(){
+        
+        ## 金融画像字段得分映射
+        jinrongziduan <- read.csv("金融画像衍生字段表_LY_0723_合并.csv")
+        jinrongziduan[is.na(jinrongziduan[,3]),3] <- -Inf
+        jinrongziduan[is.na(jinrongziduan[,4]),4] <- Inf
+        uniziduan <- setdiff(unique(jinrongziduan[,2]),"")
+        breas1 <- list()
+        labels1 <- list()
+        for(i in 1:length(uniziduan)){
+                tmpsubs <- which(jinrongziduan[,2]==uniziduan[i])
+                tmp <- as.vector(jinrongziduan[tmpsubs,3:4])
+                tmp <- c(tmp[,1],tmp[,2])
+                breas1[[i]] <- sort(unique(as.numeric(tmp)))
+                labels1[[i]] <- as.numeric(jinrongziduan[tmpsubs,5])
+        }
+        names(breas1) <- uniziduan
+        
+        
         #航空字段的得分 
-        hangkongziduan <- as.matrix( read.csv("航空数据衍生指标得分划分.csv") )
-        ziduan <- setdiff(unique(hangkongziduan[,1]),"")
-        for(i in 1:nrow(hangkongziduan)){
-                if(hangkongziduan[i,1]==""){
-                        hangkongziduan[i,1] <- hangkongziduan[i-1,1]
-                }
-        }
-        hangkongziduan[,"上界"] <- gsub("infty","Inf",hangkongziduan[,"上界"])
+        # hangkongziduan <- as.matrix( read.csv("航空数据衍生指标得分划分.csv") )
+        # ziduan <- setdiff(unique(hangkongziduan[,1]),"")
+        # for(i in 1:nrow(hangkongziduan)){
+        #         if(hangkongziduan[i,1]==""){
+        #                 hangkongziduan[i,1] <- hangkongziduan[i-1,1]
+        #         }
+        # }
+        # hangkongziduan[,"上界"] <- gsub("infty","Inf",hangkongziduan[,"上界"])
+        # 
+        # breas <- list()
+        # labels <- list()
+        # for(i in 1:length(ziduan)){
+        #         tmpsubs <- which(hangkongziduan[,1]==ziduan[i])
+        #         tmp <- as.vector(hangkongziduan[tmpsubs,c("下界","上界")])
+        #         breas[[i]] <- sort(unique(as.numeric(tmp)))
+        #         labels[[i]] <- as.numeric(hangkongziduan[tmpsubs,"得分"])
+        # }
+        # names(breas) <- ziduan
         
-        breas <- list()
-        labels <- list()
-        for(i in 1:length(ziduan)){
-                tmpsubs <- which(hangkongziduan[,1]==ziduan[i])
-                tmp <- as.vector(hangkongziduan[tmpsubs,c("下界","上界")])
-                breas[[i]] <- sort(unique(as.numeric(tmp)))
-                labels[[i]] <- as.numeric(hangkongziduan[tmpsubs,"得分"])
-        }
-        names(breas) <- ziduan
-        
-        list(breas=breas,labels=labels)
+        list(breas1=breas1,labels1=labels1)
 
 }
 
@@ -119,137 +234,149 @@ trees_construct <- function(){
 
         ## 金融画像远期
         tree1 <- Node$new("JinronghuaxiangYuan")
-                Xingweipianhao_tree1 <- tree1$AddChild("Xingweipianhao")
-                        Touzi_tree1 <- Xingweipianhao_tree1$AddChild("Touzi")
-                        Yongkaxiguan_tree1 <- Xingweipianhao_tree1$AddChild("Yongkaxiguan")
-                                Jiejika_tree1 <- Yongkaxiguan_tree1$AddChild("Jiejika")
-                                        Jiejikashuliang_tree1 <- Jiejika_tree1$AddChild("Jiejikashuliang")
-                                        Jiejikaxiaofeijine12_tree1 <- Jiejika_tree1$AddChild("Jiejikaxiaofeijine12")
-                                        Jiejikaxiaofeicishu12_tree1 <- Jiejika_tree1$AddChild("Jiejikaxiaofeicishu12")
-                                Xinyongka_tree1 <- Yongkaxiguan_tree1$AddChild("Xinyongka")
-                                        Xinyongkashuliang_tree1 <- Xinyongka_tree1$AddChild("Xinyongkashuliang")
-                                        Xinyongkaxiaofeijine12_tree1 <- Xinyongka_tree1$AddChild("Xinyongkaxiaofeijine12")
-                                        Xinyongkaxiaofeicishu12_tree1 <- Xinyongka_tree1$AddChild("Xinyongkaxiaofeicishu12")
-                                Jiedaibi_tree1 <- Yongkaxiguan_tree1$AddChild("Jiedaibi")
-                                        Jiedaibishuliangbi_tree1 <- Jiedaibi_tree1$AddChild("Jiedaibishuliangbi")
-                                        Jiedaibixiaofeijinebi12_tree1 <- Jiedaibi_tree1$AddChild("Jiedaibixiaofeijine12")
-                                        Jiedaibixiaofeicishu12_tree1 <- Jiedaibi_tree1$AddChild("Jiedaibixiaofeicishu12")
-                                Wanggouyushitidianbili_tree1 <- Yongkaxiguan_tree1$AddChild("Wanggouyushitidianbili")
-                                        Jiejikaxianshangxiaofeijine12_tree1 <-  Wanggouyushitidianbili_tree1$AddChild("Jiejikaxianshangxiaofeijine12")
-                                        Xinyongkaxianshangxiaofeijine12_tree1 <-  Wanggouyushitidianbili_tree1$AddChild("Xinyongkaxianshangxiaofeijine12")
-                        Yongkanianxian_tree1 <- Xingweipianhao_tree1$AddChild("Yongkanianxian")
-                                Jiejikayongkanianxian_tree1 <- Yongkanianxian_tree1$AddChild("Jiejikayongkanianxian")
-                                        Jiejikazhangling_tree1 <- Jiejikayongkanianxian_tree1$AddChild("Jiejikazhangling")
-                                        Jiejikakaling_tree1 <- Jiejikayongkanianxian_tree1$AddChild("Jiejikakaling")
-                                Xinyongkayongkazhangling_tree1 <- Yongkanianxian_tree1$AddChild("Xinyongkayongkazhangling")
-                Lvyuenengli_tree1 <- tree1$AddChild("Lvyuenengli")
-                        Shouzhi_tree1 <-  Lvyuenengli_tree1$AddChild("Shouzhi")  
-                                Shou_tree1 <- Shouzhi_tree1$AddChild("Shou")
-                                        Ruzhangjine12_tree1 <- Shou_tree1$AddChild("Ruzhangjine12")
-                                        Ruzhangbishu12_tree1 <- Shou_tree1$AddChild("Ruzhangbishu12")
-                                Zhi_tree1 <- Shouzhi_tree1$AddChild("Zhi")
-                                        Touzizhi_tree1 <- Zhi_tree1$AddChild("Touzizhi")
-                                        Xiaofeizhi_tree1 <- Zhi_tree1$AddChild("Xiaofeizhi")
-                                                Jinexiaofei_tree1 <- Xiaofeizhi_tree1$AddChild("Jinexiaofei")
-                                                        Xiaofeijine12_tree1 <- Jinexiaofei_tree1$AddChild("Xiaofeijine12")
-                                                        Xianshangxiaofei12_tree1 <- Jinexiaofei_tree1$AddChild("Xianshangxiaofei12")
-                                                        Dancixiaofeijine12_tree1 <- Jinexiaofei_tree1$AddChild("Dancixiaofeijine12")
-                                                Pinlvxiaofei_tree1 <- Xiaofeizhi_tree1$AddChild("Pinlvxiaofei")
-                                        Chuzhangzhi_tree1 <- Zhi_tree1$AddChild("Chuzhangzhi")
-                                                Jinechuzhang_tree1 <- Chuzhangzhi_tree1$AddChild("Jinechuzhang")
-                                                Pinlvchuzhang_tree1 <- Chuzhangzhi_tree1$AddChild("Pinlvchuzhang")
-                                Bilv_tree1 <- Shouzhi_tree1$AddChild("Bilv")
-                                        Shouruzhichubi12_tree1 <- Bilv_tree1$AddChild("Shouruzhichubi12")
-                                        XiaofeiZhichubi12_tree1 <- Bilv_tree1$AddChild("XiaofeiZhichubi12")
-                        Zichanfuzhai_tree1 <-  Lvyuenengli_tree1$AddChild("Zichanfuzhai")        
-                                Zichanjine_tree1 <- Zichanfuzhai_tree1$AddChild("Zichanjine")
-                                        Jiejikayue_tree1 <- Zichanjine_tree1$AddChild("Zichanjine")
-                                        Zongruzhangjine12_tree1 <- Zichanjine_tree1$AddChild("Zongruzhangjine12")
-                                Gerentouzi12_tree1 <- Zichanfuzhai_tree1$AddChild("Gerentouzi12")
-                Shehuiguanxi_tree1 <- tree1$AddChild("Shehuiguanxi")
-                        Zaixianshichang_tree1 <- Shehuiguanxi_tree1$AddChild("Zaixianshichang")
-                        Shoujixiaofei_tree1 <- Shehuiguanxi_tree1$AddChild("Shoujixiaofei")
-                Shenfentezhi_tree1 <- tree1$AddChild("Shenfentezhi")
-                        Nianling_tree1 <-  Shenfentezhi_tree1$AddChild("Shenfentezhi")
-                        #Gaoguanrenzhi_tree1 <-  Shenfentezhi_tree1$AddChild("Gaoguanrenzhi")
-                        #GerentouziShen_tree1 <-  Shenfentezhi_tree1$AddChild("GerentouziShen")
-                        Juzhudi_tree1 <-  Shenfentezhi_tree1$AddChild("Juzhudi")
-                Xinyonglishi_tree1 <- tree1$AddChild("Xinyonglishi")
-                        Huoyuedu_tree1 <- Xinyonglishi_tree1$AddChild("Huoyuedu")
-                                XinyongkaXin_tree1 <- Huoyuedu_tree1$AddChild("XinyongkaXin")
-                                        Xinyongkashuliangxin_tree1 <- XinyongkaXin_tree1$AddChild("Xinyongkashuliangxin")
-                                        Yinhangshuliangxin_tree1 <- XinyongkaXin_tree1$AddChild("Yinhangshuliangxin")
-                                        Xiaofeixin_tree1 <- XinyongkaXin_tree1$AddChild("Xiaofeixin")
-                                                Xinyongkaxiaofeijinexin_tree1 <- Xiaofeixin_tree1$AddChild("Xinyongkaxiaofeijinexin")
-                                                Xinyongkaxiaofeibishuxin_tree1 <- Xiaofeixin_tree1$AddChild("Xinyongkaxiaofeibishuxin")
-                                                Xinyongkaxianshangxiaofeibixin_tree1 <- Xiaofeixin_tree1$AddChild("Xinyongkaxianshangxiaofeibixin")
-                                                Xinyongkadancixiaofeijinexin_tree1 <- Xiaofeixin_tree1$AddChild("Xinyongkadancixiaofeijinexin")
-                                Houfufeishixiang_tree1 <- Huoyuedu_tree1$AddChild("Houfufeishixiang")
-                        Shouxindu_tree1 <- Xinyonglishi_tree1$AddChild("Shouxindu")
-                                huankuanjine12 <- Shouxindu_tree1$AddChild("huankuanjine12")
-                                huankuanbishu12 <- Shouxindu_tree1$AddChild("huankuanbishu12")
-                                huanqingbili12 <- Shouxindu_tree1$AddChild("huanqingbili12")
+        Xingweipianhao_tree1 <- tree1$AddChild("Xingweipianhao")
+        Touzi_tree1 <- Xingweipianhao_tree1$AddChild("Touzi")
+        Yongkaxiguan_tree1 <- Xingweipianhao_tree1$AddChild("Yongkaxiguan")
+        Jiejika_tree1 <- Yongkaxiguan_tree1$AddChild("Jiejika")
+        Jiejikashuliang_tree1 <- Jiejika_tree1$AddChild("Jiejikashuliang")
+        Jiejikaxiaofeijine12_tree1 <- Jiejika_tree1$AddChild("Jiejikaxiaofeijine12")
+        Jiejikaxiaofeicishu12_tree1 <- Jiejika_tree1$AddChild("Jiejikaxiaofeicishu12")
+        Xinyongka_tree1 <- Yongkaxiguan_tree1$AddChild("Xinyongka")
+        Xinyongkashuliang_tree1 <- Xinyongka_tree1$AddChild("Xinyongkashuliang")
+        Xinyongkaxiaofeijine12_tree1 <- Xinyongka_tree1$AddChild("Xinyongkaxiaofeijine12")
+        Xinyongkaxiaofeicishu12_tree1 <- Xinyongka_tree1$AddChild("Xinyongkaxiaofeicishu12")
+        Jiedaibi_tree1 <- Yongkaxiguan_tree1$AddChild("Jiedaibi")
+        Jiedaibishuliangbi_tree1 <- Jiedaibi_tree1$AddChild("Jiedaibishuliangbi")
+        Jiedaibixiaofeijinebi12_tree1 <- Jiedaibi_tree1$AddChild("Jiedaibixiaofeijine12")
+        Jiedaibixiaofeicishu12_tree1 <- Jiedaibi_tree1$AddChild("Jiedaibixiaofeicishu12")
+        Wanggouyushitidianbili_tree1 <- Yongkaxiguan_tree1$AddChild("Wanggouyushitidianbili")
+        Jiejikaxianshangxiaofeijine12_tree1 <-  Wanggouyushitidianbili_tree1$AddChild("Jiejikaxianshangxiaofeijine12")
+        Xinyongkaxianshangxiaofeijine12_tree1 <-  Wanggouyushitidianbili_tree1$AddChild("Xinyongkaxianshangxiaofeijine12")
+        Yongkanianxian_tree1 <- Xingweipianhao_tree1$AddChild("Yongkanianxian")
+        Jiejikayongkanianxian_tree1 <- Yongkanianxian_tree1$AddChild("Jiejikayongkanianxian")
+        Jiejikazhangling_tree1 <- Jiejikayongkanianxian_tree1$AddChild("Jiejikazhangling")
+        Jiejikakaling_tree1 <- Jiejikayongkanianxian_tree1$AddChild("Jiejikakaling")
+        Xinyongkayongkazhangling_tree1 <- Yongkanianxian_tree1$AddChild("Xinyongkayongkazhangling")
+        Lvyuenengli_tree1 <- tree1$AddChild("Lvyuenengli")
+        Shouzhi_tree1 <-  Lvyuenengli_tree1$AddChild("Shouzhi")  
+        Shou_tree1 <- Shouzhi_tree1$AddChild("Shou")
+        Ruzhangjine12_tree1 <- Shou_tree1$AddChild("Ruzhangjine12")
+        Ruzhangbishu12_tree1 <- Shou_tree1$AddChild("Ruzhangbishu12")
+        Zhi_tree1 <- Shouzhi_tree1$AddChild("Zhi")
+        Touzizhi_tree1 <- Zhi_tree1$AddChild("Touzizhi")
+        Xiaofeizhi_tree1 <- Zhi_tree1$AddChild("Xiaofeizhi")
+        Jinexiaofei_tree1 <- Xiaofeizhi_tree1$AddChild("Jinexiaofei")
+        Xiaofeijine12_tree1 <- Jinexiaofei_tree1$AddChild("Xiaofeijine12")
+        Xianshangxiaofei12_tree1 <- Jinexiaofei_tree1$AddChild("Xianshangxiaofei12")
+        Dancixiaofeijine12_tree1 <- Jinexiaofei_tree1$AddChild("Dancixiaofeijine12")
+        Pinlvxiaofei_tree1 <- Xiaofeizhi_tree1$AddChild("Pinlvxiaofei")
+        Chuzhangzhi_tree1 <- Zhi_tree1$AddChild("Chuzhangzhi")
+        Jinechuzhang_tree1 <- Chuzhangzhi_tree1$AddChild("Jinechuzhang")
+        Pinlvchuzhang_tree1 <- Chuzhangzhi_tree1$AddChild("Pinlvchuzhang")
+        Bilv_tree1 <- Shouzhi_tree1$AddChild("Bilv")
+        Shouruzhichubi12_tree1 <- Bilv_tree1$AddChild("Shouruzhichubi12")
+        XiaofeiZhichubi12_tree1 <- Bilv_tree1$AddChild("XiaofeiZhichubi12")
+        Zichanfuzhai_tree1 <-  Lvyuenengli_tree1$AddChild("Zichanfuzhai")        
+        Zichanjine_tree1 <- Zichanfuzhai_tree1$AddChild("Zichanjine")
+        Jiejikayue_tree1 <- Zichanjine_tree1$AddChild("Zichanjine")
+        Zongruzhangjine12_tree1 <- Zichanjine_tree1$AddChild("Zongruzhangjine12")
+        Gerentouzi12_tree1 <- Zichanfuzhai_tree1$AddChild("Gerentouzi12")
+        Shehuiguanxi_tree1 <- tree1$AddChild("Shehuiguanxi")
+        Zaixianshichang_tree1 <- Shehuiguanxi_tree1$AddChild("Zaixianshichang")
+        Shoujixiaofei_tree1 <- Shehuiguanxi_tree1$AddChild("Shoujixiaofei")
+        Shenfentezhi_tree1 <- tree1$AddChild("Shenfentezhi")
+        Nianling_tree1 <-  Shenfentezhi_tree1$AddChild("Shenfentezhi")
+        #Gaoguanrenzhi_tree1 <-  Shenfentezhi_tree1$AddChild("Gaoguanrenzhi")
+        #GerentouziShen_tree1 <-  Shenfentezhi_tree1$AddChild("GerentouziShen")
+        Juzhudi_tree1 <-  Shenfentezhi_tree1$AddChild("Juzhudi")
+        Xinyonglishi_tree1 <- tree1$AddChild("Xinyonglishi")
+        Huoyuedu_tree1 <- Xinyonglishi_tree1$AddChild("Huoyuedu")
+        XinyongkaXin_tree1 <- Huoyuedu_tree1$AddChild("XinyongkaXin")
+        Xinyongkashuliangxin_tree1 <- XinyongkaXin_tree1$AddChild("Xinyongkashuliangxin")
+        Yinhangshuliangxin_tree1 <- XinyongkaXin_tree1$AddChild("Yinhangshuliangxin")
+        Xiaofeixin_tree1 <- XinyongkaXin_tree1$AddChild("Xiaofeixin")
+        Xinyongkaxiaofeijinexin_tree1 <- Xiaofeixin_tree1$AddChild("Xinyongkaxiaofeijinexin")
+        Xinyongkaxiaofeibishuxin_tree1 <- Xiaofeixin_tree1$AddChild("Xinyongkaxiaofeibishuxin")
+        Xinyongkaxianshangxiaofeibixin_tree1 <- Xiaofeixin_tree1$AddChild("Xinyongkaxianshangxiaofeibixin")
+        Xinyongkadancixiaofeijinexin_tree1 <- Xiaofeixin_tree1$AddChild("Xinyongkadancixiaofeijinexin")
+        Houfufeishixiang_tree1 <- Huoyuedu_tree1$AddChild("Houfufeishixiang")
+        Shouxindu_tree1 <- Xinyonglishi_tree1$AddChild("Shouxindu")
+        huankuanjine12 <- Shouxindu_tree1$AddChild("huankuanjine12")
+        huankuanbishu12 <- Shouxindu_tree1$AddChild("huankuanbishu12")
+        huanqingbili12 <- Shouxindu_tree1$AddChild("huanqingbili12")
         
-        tree1$Set(weight = c(10,2,4,4,3,2,8,0,3,1,5,4,2,1,5,4,2,5,5,2,5,5,5,5,3,8,4,7,3,4,2,3,7,4,2,4,3,5,7,3,2,6,4,2,6,4,6,4,1,5,5,1,5,5,3,4,8,2,2,6,3,3,2,2,2,6,4,1,5)/10)
-                                
-                                
-                                
+        tree1$Set(weight = c(10,2,4,4,3,2,8,0,3,1,
+                             5,4,2,1,5,4,2,5,5,2,
+                             5,5,5,5,3,8,3,7,3,3,
+                             2,3,7,4,2,4,3,5,7,3,
+                             4,6,4,2,6,4,6,4,1,5,
+                             5,1,5,5,3,4,8,2,2,6,
+                             3,3,2,2,2,6,4,1,5)/10)
+					 
+                                               
         ## 金融画像近期
+        ## 金融画像 short term
         tree2 <- Node$new("JinronghuaxiangYuan")
-                Xingweipianhao_tree2 <- tree2$AddChild("Xingweipianhao")
-                        Touzi_tree2 <- Xingweipianhao_tree2$AddChild("Touzi")
-                                Touzizhanbi_tree2 <- Touzi_tree2$AddChild("Touzizhanbi")
-                                Touziqushi_tree2 <- Touzi_tree2$AddChild("Touziqushi")
-                        Yongkaxiguan_tree2 <- Xingweipianhao_tree2$AddChild("Yongkaxiguan")
-                                Jiedaibi_tree2 <- Yongkaxiguan_tree2$AddChild("Jiedaibi")
-                                        Jiejikaxinyongkaxiaofeijinebi_tree2 <- Jiedaibi_tree2$AddChild("Jiejikaxinyongkaxiaofeijinebi")
-                                        Jiejikaxinyongkaxiaofeicishubi_tree2 <- Jiedaibi_tree2$AddChild("Jiejikaxinyongkaxiaofeicishubi")
-                                Wanggouyushitidianbili_tree2 <- Yongkaxiguan_tree2$AddChild("Wanggouyushitidianbili")
-                                        Xianshangxiaofeibijiejika_tree2 <- Wanggouyushitidianbili_tree2$AddChild("Xianshangxiaofeibijiejika")
-                                        Xianshangxiaofeibixinyongka_tree2 <- Wanggouyushitidianbili_tree2$AddChild("Xianshangxiaofeibixinyongka")
-                        Lvyuenengli_tree2 <- tree2$AddChild("Lvyuenengli")
-                                Shouzhi_tree2 <-  Lvyuenengli_tree2$AddChild("Shouzhi")  
-                                        Shou_tree2 <- Shouzhi_tree2$AddChild("Shou")
-                                                Bianhuafudushou_tree2 <- Shou_tree2$AddChild("Bianhuafudushou")
-                                                        Jinefudushou_tree2 <- Bianhuafudushou_tree2$AddChild("Jinefudushou")
-                                                        Pinlvfudushou_tree2 <- Bianhuafudushou_tree2$AddChild("Pinlvfudushou")
-                                                Bianhuaqushishou_tree2 <- Shou_tree2$AddChild("Bianhuaqushishou")
-                                                        Jinequshishou_tree2 <- Bianhuaqushishou_tree2$AddChild("Jinequshishou")
-                                                        Pinlvqushishou_tree2 <- Bianhuaqushishou_tree2$AddChild("Pinlvqushishou")
-                                        Zhi_tree2 <- Shouzhi_tree2$AddChild("Zhi")
-                                                Bianhuafuduzhi_tree2 <- Zhi_tree2$AddChild("Bianhuafuduzhi")
-                                                        Jinefudu_tree2 <- Bianhuafuduzhi_tree2$AddChild("Jinefudu")
-                                                        Pinlvfudu_tree2 <- Bianhuafuduzhi_tree2$AddChild("Pinlvfudu")
-                                                Bianhuaqushizhi_tree2 <- Zhi_tree2$AddChild("Bianhuaqushizhi")
-                                                        Jinequshi_tree2 <- Bianhuaqushizhi_tree2$AddChild("Jinequshi")
-                                                        Pinlvqushi_tree2 <- Bianhuaqushizhi_tree2$AddChild("Pinlvqushi")
-                                        Bilv_tree2 <- Shouzhi_tree2$AddChild("Bilv")
-                                                Shouruzhichubi12_tree2 <- Bilv_tree2$AddChild("Shouruzhichubi12")
-                                                        Shouruzhichubiqushi_tree2 <- Shouruzhichubi12_tree2$AddChild("Shouruzhichubiqushi")
-                                                        Shouruzhichubifudu_tree2 <- Shouruzhichubi12_tree2$AddChild("Shouruzhichubifudu")
-                                                Xiaofeizhichubi12_tree2 <- Bilv_tree2$AddChild("Xiaofeizhichubi12")
-                                                        Xiaofeizhichubiqushi_tree2 <- Xiaofeizhichubi12_tree2$AddChild("Xiaofeizhichubiqushi")
-                                                        Xiaofeizhichubifudu_tree2 <- Xiaofeizhichubi12_tree2$AddChild("Xiaofeizhichubifudu")
-                                Zichanfuzhai_tree2 <-  Lvyuenengli_tree2$AddChild("Zichanfuzhai")          
-                        Shehuiguanxi_tree2 <- tree2$AddChild("Shehuiguanxi")
-                                Zaixianshichang_tree2 <- Shehuiguanxi_tree2$AddChild("Zaixianshichang")
-                                Shoujixiaofei_tree2 <- Shehuiguanxi_tree2$AddChild("Shoujixiaofei")
-                        Shenfentezhi_tree2 <- tree2$AddChild("Shenfentezhi")
-                                Gaoguanrenzhi_tree2 <-  Shenfentezhi_tree2$AddChild("Gaoguanrenzhi")
-                                #GerentouziShen_tree2 <-  Shenfentezhi_tree2$AddChild("GerentouziShen")
-                                Juzhudi_tree2 <-  Shenfentezhi_tree2$AddChild("Juzhudi")
-                        Xinyonglishi_tree2 <- tree2$AddChild("Xinyonglishi")
-                                Huoyuedu_tree2 <- Xinyonglishi_tree2$AddChild("Huoyuedu")
-                                        Xinyongkaxiaofeijine_tree2 <- Huoyuedu_tree2$AddChild("Xinyongkaxiaofeijine")
-                                        Xinyongkaxiaofeibishu_tree2 <- Huoyuedu_tree2$AddChild("Xinyongkaxiaofeibishu")
-                                        Xinyongkaxiaofeijinebi_tree2 <- Huoyuedu_tree2$AddChild("Xinyongkaxiaofeijinebi")
-                                        Xinyongkaxiaofeicishubi_tree2 <- Huoyuedu_tree2$AddChild("Xinyongkaxiaofeicishubi")
-                                Shouxindu_tree2 <- Xinyonglishi_tree2$AddChild("Shouxindu")
-                                        huankuanjinebi_tree2 <- Shouxindu_tree2$AddChild("huankuanjinebi")
-                                        huankuanjinebilv_tree2 <- Shouxindu_tree2$AddChild("huankuanjinebilv")
+        Xingweipianhao_tree2 <- tree2$AddChild("Xingweipianhao")
+        Touzi_tree2 <- Xingweipianhao_tree2$AddChild("Touzi")
+        Touzizhanbi_tree2 <- Touzi_tree2$AddChild("Touzizhanbi")
+        Touziqushi_tree2 <- Touzi_tree2$AddChild("Touziqushi")
+        Yongkaxiguan_tree2 <- Xingweipianhao_tree2$AddChild("Yongkaxiguan")
+        Jiedaibi_tree2 <- Yongkaxiguan_tree2$AddChild("Jiedaibi")
+        Jiejikaxinyongkaxiaofeijinebi_tree2 <- Jiedaibi_tree2$AddChild("Jiejikaxinyongkaxiaofeijinebi")
+        Jiejikaxinyongkaxiaofeicishubi_tree2 <- Jiedaibi_tree2$AddChild("Jiejikaxinyongkaxiaofeicishubi")
+        Wanggouyushitidianbili_tree2 <- Yongkaxiguan_tree2$AddChild("Wanggouyushitidianbili")
+        Xianshangxiaofeibijiejika_tree2 <- Wanggouyushitidianbili_tree2$AddChild("Xianshangxiaofeibijiejika")
+        Xianshangxiaofeibixinyongka_tree2 <- Wanggouyushitidianbili_tree2$AddChild("Xianshangxiaofeibixinyongka")
+        Lvyuenengli_tree2 <- tree2$AddChild("Lvyuenengli")
+        Shouzhi_tree2 <-  Lvyuenengli_tree2$AddChild("Shouzhi")  
+        Shou_tree2 <- Shouzhi_tree2$AddChild("Shou")
+        Bianhuafudushou_tree2 <- Shou_tree2$AddChild("Bianhuafudushou")
+        Jinefudushou_tree2 <- Bianhuafudushou_tree2$AddChild("Jinefudushou")
+        Pinlvfudushou_tree2 <- Bianhuafudushou_tree2$AddChild("Pinlvfudushou")
+        Bianhuaqushishou_tree2 <- Shou_tree2$AddChild("Bianhuaqushishou")
+        Jinequshishou_tree2 <- Bianhuaqushishou_tree2$AddChild("Jinequshishou")
+        Pinlvqushishou_tree2 <- Bianhuaqushishou_tree2$AddChild("Pinlvqushishou")
+        Zhi_tree2 <- Shouzhi_tree2$AddChild("Zhi")
+        Bianhuafuduzhi_tree2 <- Zhi_tree2$AddChild("Bianhuafuduzhi")
+        Jinefudu_tree2 <- Bianhuafuduzhi_tree2$AddChild("Jinefudu")
+        Pinlvfudu_tree2 <- Bianhuafuduzhi_tree2$AddChild("Pinlvfudu")
+        Bianhuaqushizhi_tree2 <- Zhi_tree2$AddChild("Bianhuaqushizhi")
+        Jinequshi_tree2 <- Bianhuaqushizhi_tree2$AddChild("Jinequshi")
+        Pinlvqushi_tree2 <- Bianhuaqushizhi_tree2$AddChild("Pinlvqushi")
+        Bilv_tree2 <- Shouzhi_tree2$AddChild("Bilv")
+        Shouruzhichubi12_tree2 <- Bilv_tree2$AddChild("Shouruzhichubi12")
+        Shouruzhichubiqushi_tree2 <- Shouruzhichubi12_tree2$AddChild("Shouruzhichubiqushi")
+        Shouruzhichubifudu_tree2 <- Shouruzhichubi12_tree2$AddChild("Shouruzhichubifudu")
+        Xiaofeizhichubi12_tree2 <- Bilv_tree2$AddChild("Xiaofeizhichubi12")
+        Xiaofeizhichubiqushi_tree2 <- Xiaofeizhichubi12_tree2$AddChild("Xiaofeizhichubiqushi")
+        Xiaofeizhichubifudu_tree2 <- Xiaofeizhichubi12_tree2$AddChild("Xiaofeizhichubifudu")
+        Zichanfuzhai_tree2 <-  Lvyuenengli_tree2$AddChild("Zichanfuzhai")          
+        Shehuiguanxi_tree2 <- tree2$AddChild("Shehuiguanxi")
+        Zaixianshichang_tree2 <- Shehuiguanxi_tree2$AddChild("Zaixianshichang")
+        Shoujixiaofei_tree2 <- Shehuiguanxi_tree2$AddChild("Shoujixiaofei")
+        Shenfentezhi_tree2 <- tree2$AddChild("Shenfentezhi")
+        Gaoguanrenzhi_tree2 <-  Shenfentezhi_tree2$AddChild("Gaoguanrenzhi")
+        #GerentouziShen_tree2 <-  Shenfentezhi_tree2$AddChild("GerentouziShen")
+        Juzhudi_tree2 <-  Shenfentezhi_tree2$AddChild("Juzhudi")
+        Xinyonglishi_tree2 <- tree2$AddChild("Xinyonglishi")
+        Huoyuedu_tree2 <- Xinyonglishi_tree2$AddChild("Huoyuedu")
+        Xinyongkaxiaofeijine_tree2 <- Huoyuedu_tree2$AddChild("Xinyongkaxiaofeijine")
+        Xinyongkaxiaofeibishu_tree2 <- Huoyuedu_tree2$AddChild("Xinyongkaxiaofeibishu")
+        Xinyongkaxiaofeijinebi_tree2 <- Huoyuedu_tree2$AddChild("Xinyongkaxiaofeijinebi")
+        Xinyongkaxiaofeicishubi_tree2 <- Huoyuedu_tree2$AddChild("Xinyongkaxiaofeicishubi")
+        Shouxindu_tree2 <- Xinyonglishi_tree2$AddChild("Shouxindu")
+        huankuanjinebi_tree2 <- Shouxindu_tree2$AddChild("huankuanjinebi")
+        huankuanjinebilv_tree2 <- Shouxindu_tree2$AddChild("huankuanjinebilv")
         
-        tree2$Set(weight = c(2,5,5,5,5,5,5,5,5,5,5,5,3,8,4,7,7,3,3,7,3,4,7,7,3,3,7,3,2,6,3,7,4,3,7,2,1,5,5,1,5,5,3,4,2,2,3,3,6,5,5)/10)                
-                                
+        tree2$Set(weight = c(10,2,5,5,5,5,5,5,5,5,
+                             5,5,3,8,3,7,7,3,3,7,
+                             3,3,7,7,3,3,7,3,4,6,
+                             3,7,4,3,7,2,1,5,5,1,
+                             5,5,3,4,2,2,3,3,6,5,
+                             5)/10)  
+
+					 
         ## 飞行数据画像
         tree3 <- Node$new("Hangkonghuaxiang")
                 Lvyuenengli5_tree3 <- tree3$AddChild("Lvyuenengli5")
@@ -296,12 +423,26 @@ trees_construct <- function(){
 
 credit_scores <- function(trees1,scores1){
         
-        tree3 <- trees1$tree3
-        tree3$Set(value = scores1, filterFun = isLeaf)
-        tree3$Do(function(node) node$value <- Valuef(node)[1], filterFun = isNotLeaf)
+        tree1 <- trees1$tree1
+        tree1$Set(value = scores1, filterFun = isLeaf)
+        tree1$Do(function(node) node$value <- Valuef(node)[1], filterFun = isNotLeaf)
+        result1 <- Get(list(tree1$Shehuiguanxi1,tree1$Xingweipianhao2,tree1$Shenfentezhi3,tree1$Xinyonglishi4,tree1$Lvyuenengli5,tree1),attribute = "value")
         
-        #print(tree3, "weight","value")
-        result <- Get(list(tree3$Shehuiguanxi1,tree3$Xingweipianhao2,tree3$Shenfentezhi3,tree3$Xinyonglishi4,tree3$Lvyuenengli5,tree3),attribute = "value")
+        
+        tree2 <- trees1$tree2
+        tree2$Set(value = scores1, filterFun = isLeaf)
+        tree2$Do(function(node) node$value <- Valuef(node)[1], filterFun = isNotLeaf)
+        result2 <- Get(list(tree2$Shehuiguanxi1,tree2$Xingweipianhao2,tree2$Shenfentezhi3,tree2$Xinyonglishi4,tree2$Lvyuenengli5,tree2),attribute = "value")
+        
+        
+        # tree3 <- trees1$tree3
+        # tree3$Set(value = scores1, filterFun = isLeaf)
+        # tree3$Do(function(node) node$value <- Valuef(node)[1], filterFun = isNotLeaf)
+        # result3 <- Get(list(tree3$Shehuiguanxi1,tree3$Xingweipianhao2,tree3$Shenfentezhi3,tree3$Xinyonglishi4,tree3$Lvyuenengli5,tree3),attribute = "value")
+        # 
+        # result4 <- sapply(1:length(result2), function(i) weighted.mean(c(result2[i], result3[i]), w=c(3,1), na.rm = TRUE))
+
+        result2       
 }
 
 Valuef <- function(node) {
