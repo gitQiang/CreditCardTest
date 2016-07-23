@@ -4,12 +4,17 @@ Credit_v0 <- function(fields0){
         ## 输入原始字段：fields0; 原始字段顺序见文件：Dictionary_HQ_raw_v0.csv
         ## 输出打分格式： 姓名 身份证号 手机号 金融画像打分近期6个数字（五个部分和一个综合打分） 金融画像打分远期6个数字（五个部分和一个综合打分） 飞行画像打分6个数（5部分和一个综合打分） 金融远期和飞行打分综合6个数 （五个部分和一个综合打分）
         
+        ## step 0: 由字符串解析出原始字段； 函数： ；原始字段表见文件：
+        
         
         ## step 1: 由原始字段到衍生字段； 函数：transform_fileds； 衍生字段表见文件：
-        fields1 <-  transform_fileds(fields0)
+        # fields1 <-  transform_fileds(fields0)
         
         ## step 2: 提取每个衍生字段的具体打分； 函数：fields_scores； 衍生字段具体打分表见文件：
+        fields1 <- c(1,0.5,0.5,1,1,3,3,1,5,50000,1800,3000,9000,0.15,1,0,1,3,1,40,1,0.6,5,6,5,0.8)
         scores1 <- fields_scores(fields1)
+        scores1 <- as.numeric(as.vector(scores1))
+        
         
         ## step 3: 预构建金融画像和飞行画像的树；函数：trees_construct; 金融画像树状结构见文件：  飞行画像树状结构见文件：
         trees1 <- trees_construct()
@@ -25,17 +30,64 @@ Credit_v0 <- function(fields0){
 
 transform_fileds <- function(fields0){
         
+        n <- 0
+        
+        ## 航空原始字段到衍生字段映射
+        speflag <- c(1:5,19:21,23:26)
+        fields1[n+speflag] <- fields0[n+speflag]
+        fields1[n+6] <- fields0[n+10]
+        fields1[n+7] <- fields0[n+11]
+        fields1[n+8] <- fields0[n+10]/fields0[n+11]
+        fields1[n+9] <- fields0[n+1]
+        fields1[n+10] <- fields0[n+15]
+        fields1[n+11] <- fields0[n+15]/fields0[n+1]
+        fields1[n+12] <- fields0[n+13]*fields0[n+1]
+        fields1[n+13] <- fields0[n+13]
+        fields1[n+14] <- fields1[n+12]/fields1[n+10]
+        fields1[n+15] <- fields0[n+4]
+        fields1[n+16] <- fields0[n+4] +  fields0[n+5]
+        fields1[n+17] <- fields0[n+4]/fields0[n+1]
+        fields1[n+18] <- fields1[n+16]/fields0[n+1]
+        fields1[n+22] <- fields0[n+2]/fields0[n+1]
+        
+        
+        ## 金融画像远期原始字段到衍生字段映射
+        
+        
+        
+        ## 金融画像近期原始字段到衍生字段映射
+        
+        
+        
+        fields1
+              
 }
 
 fields_scores <- function(fields1){
 
+        #options(stringsAsFactors=FALSE)
+        
+        #航空字段的得分  
+        tmp <- getBreaks()
+        breaksL <- tmp$breas
+        labelsL <- tmp$labels
+        
+        ### only for test
+        for(i in 1:length(breaksL)){
+                if(any(is.na(labelsL[[i]])) ){
+                        breaksL[[i]] <- c(-1,1)
+                        labelsL[[i]] <- 1
+                        }
+                }
+        
+        HangkongScore <- sapply(1:length(fields1), function(i){ 
+                #print(i)
+                cut(as.numeric(fields1[i]), breaksL[[i]],labelsL[[i]])
+                })
         
         
-        #航空字段的得分    
-        breaksy <- list()
-        breaksy[[1]] <- c()
-        breaksy[[2]] <- c(0,0.3,0.7,1)
-        
+        scores1 <- HangkongScore
+        scores1
 }
 
 getBreaks <- function(){
@@ -230,7 +282,7 @@ trees_construct <- function(){
                         Nianling3_tree3 <- Shenfentezhi3_tree3$AddChild("Nianling3")
                         Juzhudi3_tree3 <- Shenfentezhi3_tree3$AddChild("Juzhudi3")
                 Xingweipianhao2_tree3 <- tree3$AddChild("Xingweipianhao2")
-                        Fanmangyuechengjishu2_tree3 <- Xingweipianhao2_tree3$AddChild("Xingweipianhao2")
+                        Fanmangyuechengjishu2_tree3 <- Xingweipianhao2_tree3$AddChild("Fanmangyuechengjishu2")
                         Zuihouyicifeixingjujin2_tree3 <- Xingweipianhao2_tree3$AddChild("Zuihouyicifeixingjujin2")
                 Shehuiguanxi1_tree3 <- tree3$AddChild("Shehuiguanxi1")
                         Chengshigeshu1_tree3 <- Shehuiguanxi1_tree3$AddChild("Chengshigeshu1")
@@ -245,10 +297,21 @@ trees_construct <- function(){
 credit_scores <- function(trees1,scores1){
         
         tree3 <- trees1$tree3
-        tree3$Set(scoreF = c(function(self) { 
-                x <- sapply(self$children, function(child) GetAttribute(child, "value", format = identity) );
-                w <- sapply(self$children, function(child) GetAttribute(child, "weight", format = identity) );
-                weighted.mean(x,w,na.rm = TRUE) 
-                }), filterFun = isNotLeaf)
-        print(tree3, "scoreF")
+        tree3$Set(value = scores1, filterFun = isLeaf)
+        tree3$Do(function(node) node$value <- Valuef(node)[1], filterFun = isNotLeaf)
+        
+        #print(tree3, "weight","value")
+        result <- Get(list(tree3$Shehuiguanxi1,tree3$Xingweipianhao2,tree3$Shenfentezhi3,tree3$Xinyonglishi4,tree3$Lvyuenengli5,tree3),attribute = "value")
+}
+
+Valuef <- function(node) {
+        if(length(node$value)>0){
+                result <- c(node$value,node$weight)
+        }else{
+                tmp <- sapply(node$children,Valuef)
+                onev <- weighted.mean(x=tmp[1,],w=tmp[2,],na.rm = TRUE)
+                result <- c(onev,node$weight)
+        }
+        
+        return (result)
 }
