@@ -5,9 +5,9 @@ test <- function(){
         rm(list=ls())
         gc()
         
-        setwd("D:/data/ÖĞĞĞ¸öÈËÕ÷ĞÅ/ÖĞĞĞ¸öÈËÕ÷ĞÅ¹²Ïí")
+        setwd("D:/data/ä¸­è¡Œä¸ªäººå¾ä¿¡/ä¸­è¡Œä¸ªäººå¾ä¿¡å…±äº«")
         source('D:/code/CreditCardTest/Credit_v0.R')
-        samples <- read.csv("Êı¾İÑù±¾0724.csv")
+        samples <- read.csv("æ•°æ®æ ·æœ¬0724.csv")
         samples <- samples[,1:60]
 
         aa <- 1:nrow(samples)
@@ -15,7 +15,7 @@ test <- function(){
                 print(i)
                 fields0 <- samples[i,]
                 tmp  <- Credit_v0(fields0)
-                aa[i] <- as.numeric(tmp[27])
+                aa[i] <- as.numeric(tmp[12])
                 
                 #cat(unlist(tmp$fields0), file="RawFields.txt", append=TRUE, sep = "\n")
                 #cat(unlist(tmp$fields1), file="DeriveFields.txt", append=TRUE, sep = "\n")
@@ -27,10 +27,10 @@ test <- function(){
 }
 
 Credit_v0 <- function(fields0){
-        ## ÊäÈëÔ­Ê¼×Ö¶Î£ºfields0; Ô­Ê¼×Ö¶ÎË³Ğò¼ûÎÄ¼ş£ºDictionary_HQ_raw_v0.csv
-        ## Êä³ö´ò·Ö¸ñÊ½£º ĞÕÃû Éí·İÖ¤ºÅ ÊÖ»úºÅ ½ğÈÚ»­Ïñ´ò·Ö½üÆÚ6¸öÊı×Ö£¨Îå¸ö²¿·ÖºÍÒ»¸ö×ÛºÏ´ò·Ö£© ½ğÈÚ»­Ïñ´ò·ÖÔ¶ÆÚ6¸öÊı×Ö£¨Îå¸ö²¿·ÖºÍÒ»¸ö×ÛºÏ´ò·Ö£© ·ÉĞĞ»­Ïñ´ò·Ö6¸öÊı£¨5²¿·ÖºÍÒ»¸ö×ÛºÏ´ò·Ö£© ½ğÈÚÔ¶ÆÚºÍ·ÉĞĞ´ò·Ö×ÛºÏ6¸öÊı £¨Îå¸ö²¿·ÖºÍÒ»¸ö×ÛºÏ´ò·Ö£©
+        ## è¾“å…¥åŸå§‹å­—æ®µï¼šfields0; åŸå§‹å­—æ®µé¡ºåºè§æ–‡ä»¶ï¼šDictionary_HQ_raw_v0.csv
+        ## è¾“å‡ºæ‰“åˆ†æ ¼å¼ï¼š å§“å èº«ä»½è¯å· æ‰‹æœºå· é‡‘èç”»åƒæ‰“åˆ†è¿‘æœŸ6ä¸ªæ•°å­—ï¼ˆäº”ä¸ªéƒ¨åˆ†å’Œä¸€ä¸ªç»¼åˆæ‰“åˆ†ï¼‰ é‡‘èç”»åƒæ‰“åˆ†è¿œæœŸ6ä¸ªæ•°å­—ï¼ˆäº”ä¸ªéƒ¨åˆ†å’Œä¸€ä¸ªç»¼åˆæ‰“åˆ†ï¼‰ é£è¡Œç”»åƒæ‰“åˆ†6ä¸ªæ•°ï¼ˆ5éƒ¨åˆ†å’Œä¸€ä¸ªç»¼åˆæ‰“åˆ†ï¼‰ é‡‘èè¿œæœŸå’Œé£è¡Œæ‰“åˆ†ç»¼åˆ6ä¸ªæ•° ï¼ˆäº”ä¸ªéƒ¨åˆ†å’Œä¸€ä¸ªç»¼åˆæ‰“åˆ†ï¼‰
         
-        ## step 0: ÓÉ×Ö·û´®½âÎö³öÔ­Ê¼×Ö¶Î£» º¯Êı£º £»Ô­Ê¼×Ö¶Î±í¼ûÎÄ¼ş£º
+        ## step 0: ç”±å­—ç¬¦ä¸²è§£æå‡ºåŸå§‹å­—æ®µï¼› å‡½æ•°ï¼š ï¼›åŸå§‹å­—æ®µè¡¨è§æ–‡ä»¶ï¼š
         personOne <- fields0[1:3]
         fields0 <- fields0[-(1:3)]
         
@@ -48,21 +48,21 @@ Credit_v0 <- function(fields0){
         
         shenfenzhengNUM <- personOne[2]
         
-        ## step 1: ÓÉÔ­Ê¼×Ö¶Îµ½ÑÜÉú×Ö¶Î£» º¯Êı£ºtransform_fileds£» ÑÜÉú×Ö¶Î±í¼ûÎÄ¼ş£º
+        ## step 1: ç”±åŸå§‹å­—æ®µåˆ°è¡ç”Ÿå­—æ®µï¼› å‡½æ•°ï¼štransform_filedsï¼› è¡ç”Ÿå­—æ®µè¡¨è§æ–‡ä»¶ï¼š
         trans <-  transform_fileds(fields0,shenfenzhengNUM)
         fields1 <- trans$fields1
         #fields1[is.na(fields1)] <- 0
         nleaf <- trans$nleaf
                 
-        ## step 2: ÌáÈ¡Ã¿¸öÑÜÉú×Ö¶ÎµÄ¾ßÌå´ò·Ö£» º¯Êı£ºfields_scores£» ÑÜÉú×Ö¶Î¾ßÌå´ò·Ö±í¼ûÎÄ¼ş£º
+        ## step 2: æå–æ¯ä¸ªè¡ç”Ÿå­—æ®µçš„å…·ä½“æ‰“åˆ†ï¼› å‡½æ•°ï¼šfields_scoresï¼› è¡ç”Ÿå­—æ®µå…·ä½“æ‰“åˆ†è¡¨è§æ–‡ä»¶ï¼š
         scores1 <- fields_scores(fields1,nleaf)
         scores1 <- as.numeric(scores1)
         #scores1[is.na(scores1)] <- 0
         
-        ## step 3: Ô¤¹¹½¨½ğÈÚ»­ÏñºÍ·ÉĞĞ»­ÏñµÄÊ÷£»º¯Êı£ºtrees_construct; ½ğÈÚ»­ÏñÊ÷×´½á¹¹¼ûÎÄ¼ş£º  ·ÉĞĞ»­ÏñÊ÷×´½á¹¹¼ûÎÄ¼ş£º
+        ## step 3: é¢„æ„å»ºé‡‘èç”»åƒå’Œé£è¡Œç”»åƒçš„æ ‘ï¼›å‡½æ•°ï¼štrees_construct; é‡‘èç”»åƒæ ‘çŠ¶ç»“æ„è§æ–‡ä»¶ï¼š  é£è¡Œç”»åƒæ ‘çŠ¶ç»“æ„è§æ–‡ä»¶ï¼š
         trees1 <- trees_construct()
         
-        ## step 4: ¼ÆËãÃ¿Ò»¸ö²ã´ÎµÄ´ò·Ö£¬²¢»ñµÃ×îÖÕÊä³ö´ò·Ö£» º¯Êı£ºcredit_scores;
+        ## step 4: è®¡ç®—æ¯ä¸€ä¸ªå±‚æ¬¡çš„æ‰“åˆ†ï¼Œå¹¶è·å¾—æœ€ç»ˆè¾“å‡ºæ‰“åˆ†ï¼› å‡½æ•°ï¼šcredit_scores;
         scores <- credit_scores(trees1,scores1,nleaf)
         
         ## step 5: Output
@@ -80,7 +80,7 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         
         nleaf <- 1:3
         fields1 <- 1:98
-        ## ½ğÈÚ»­ÏñÔ¶ÆÚÔ­Ê¼×Ö¶Îµ½ÑÜÉú×Ö¶ÎÓ³Éä
+        ## é‡‘èç”»åƒè¿œæœŸåŸå§‹å­—æ®µåˆ°è¡ç”Ÿå­—æ®µæ˜ å°„
         n <- 0
         fields1[n+1] <- fields0[n+9]/fields0[n+8]
         fields1[n+2] <- fields0[n+2]
@@ -138,7 +138,7 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         fields1[n+43] <- fields0[n+12]/fields0[n+18]
         
         
-        ## ½ğÈÚ»­Ïñ½üÆÚÔ­Ê¼×Ö¶Îµ½ÑÜÉú×Ö¶ÎÓ³Éä
+        ## é‡‘èç”»åƒè¿‘æœŸåŸå§‹å­—æ®µåˆ°è¡ç”Ÿå­—æ®µæ˜ å°„
         n1 <- 43
         nleaf[1] <- n1
         
@@ -173,7 +173,7 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         fields1[n1+29] <- (fields0[n+27]/fields0[n+33])/(fields0[n+12]/fields0[n+18])
         
 
-        ## º½¿ÕÔ­Ê¼×Ö¶Îµ½ÑÜÉú×Ö¶ÎÓ³Éä
+        ## èˆªç©ºåŸå§‹å­—æ®µåˆ°è¡ç”Ÿå­—æ®µæ˜ å°„
         n <- 0
         n2 <- 72
         nleaf[2] <- n2
@@ -213,7 +213,7 @@ fields_scores <- function(fields1,nleaf){
         tmp <- getBreaks()
         
         #options(stringsAsFactors=FALSE)
-        ## ½ğÈÚ»­ÏñµÄÔ¶ÆÚµÃ·Ö
+        ## é‡‘èç”»åƒçš„è¿œæœŸå¾—åˆ†
         breaksL <- tmp$breas1
         labelsL <- tmp$labels1
         JinrongScore <- sapply(n1, function(i){
@@ -222,7 +222,7 @@ fields_scores <- function(fields1,nleaf){
         })
         JinrongScore <- as.vector(JinrongScore)
         
-        ## ½ğÈÚ»­ÏñµÄÔ¶ÆÚµÃ·Ö
+        ## é‡‘èç”»åƒçš„è¿œæœŸå¾—åˆ†
         breaksL <- tmp$breas2
         labelsL <- tmp$labels2
         JinrongScore1 <- sapply(n2, function(i){
@@ -230,7 +230,7 @@ fields_scores <- function(fields1,nleaf){
         })
         JinrongScore1 <- as.vector(JinrongScore1)
         
-        #º½¿Õ×Ö¶ÎµÄµÃ·Ö
+        #èˆªç©ºå­—æ®µçš„å¾—åˆ†
         breaksL <- tmp$breas
         labelsL <- tmp$labels
 
@@ -247,8 +247,8 @@ fields_scores <- function(fields1,nleaf){
 
 getBreaks <- function(){
         
-        ## ½ğÈÚ»­ÏñÔ¶ÆÚ×Ö¶ÎµÃ·ÖÓ³Éä
-        jinrongziduan <- read.csv("½ğÈÚ»­ÏñÑÜÉú×Ö¶Î±í_LY_0723_Chang.csv")
+        ## é‡‘èç”»åƒè¿œæœŸå­—æ®µå¾—åˆ†æ˜ å°„
+        jinrongziduan <- read.csv("é‡‘èç”»åƒè¡ç”Ÿå­—æ®µè¡¨_LY_0723_Chang.csv")
         jinrongziduan[,2] <- paste(jinrongziduan[,1],jinrongziduan[,2],sep="_")
         jinrongziduan[is.na(jinrongziduan[,3]),3] <- -Inf
         jinrongziduan[is.na(jinrongziduan[,4]),4] <- Inf
@@ -263,8 +263,8 @@ getBreaks <- function(){
         }
         names(breas1) <- uniziduan
         
-        ## ½ğÈÚ»­Ïñ½üÆÚ×Ö¶ÎµÃ·ÖÓ³Éä
-        jinrongziduan1 <- read.csv("½ğÈÚ»­ÏñÑÜÉú×Ö¶Î±í_LY_0723_Duan.csv")
+        ## é‡‘èç”»åƒè¿‘æœŸå­—æ®µå¾—åˆ†æ˜ å°„
+        jinrongziduan1 <- read.csv("é‡‘èç”»åƒè¡ç”Ÿå­—æ®µè¡¨_LY_0723_Duan.csv")
         jinrongziduan1[,2] <- paste(jinrongziduan1[,1],jinrongziduan1[,2],sep="_")
         jinrongziduan1[is.na(jinrongziduan1[,3]),3] <- -Inf
         jinrongziduan1[is.na(jinrongziduan1[,4]),4] <- Inf
@@ -280,8 +280,8 @@ getBreaks <- function(){
         names(breas2) <- uniziduan1
         
         
-        #º½¿Õ×Ö¶ÎµÄµÃ·Ö 
-        hangkongziduan <- as.matrix( read.csv("º½¿ÕÊı¾İÑÜÉúÖ¸±êµÃ·Ö»®·Ö.csv") )
+        #èˆªç©ºå­—æ®µçš„å¾—åˆ† 
+        hangkongziduan <- as.matrix( read.csv("èˆªç©ºæ•°æ®è¡ç”ŸæŒ‡æ ‡å¾—åˆ†åˆ’åˆ†.csv") )
         ziduan <- setdiff(unique(hangkongziduan[,1]),"")
         for(i in 1:nrow(hangkongziduan)){
                 if(hangkongziduan[i,1]==""){
@@ -322,7 +322,7 @@ getScores <- function(f,breaksL){
 
 trees_construct <- function(){
 
-        ## ½ğÈÚ»­ÏñÔ¶ÆÚ
+        ## é‡‘èç”»åƒè¿œæœŸ
         tree1 <- Node$new("JinronghuaxiangYuan")
         Xingweipianhao_tree1 <- tree1$AddChild("Xingweipianhao")
         Touzi_tree1 <- Xingweipianhao_tree1$AddChild("Touzi")
@@ -404,8 +404,8 @@ trees_construct <- function(){
                              3,3,2,2,2,6,4,1,5)/10)
 					 
                                                
-        ## ½ğÈÚ»­Ïñ½üÆÚ
-        ## ½ğÈÚ»­Ïñ short term
+        ## é‡‘èç”»åƒè¿‘æœŸ
+        ## é‡‘èç”»åƒ short term
         tree2 <- Node$new("JinronghuaxiangYuan")
         Xingweipianhao_tree2 <- tree2$AddChild("Xingweipianhao")
         Touzi_tree2 <- Xingweipianhao_tree2$AddChild("Touzi")
@@ -467,7 +467,7 @@ trees_construct <- function(){
                              5)/10)  
 
 					 
-        ## ·ÉĞĞÊı¾İ»­Ïñ
+        ## é£è¡Œæ•°æ®ç”»åƒ
         tree3 <- Node$new("Hangkonghuaxiang")
                 Lvyuenengli5_tree3 <- tree3$AddChild("Lvyuenengli5")
                         Guonei5_tree3 <-  Lvyuenengli5_tree3$AddChild("Guonei5")
@@ -555,9 +555,9 @@ Valuef <- function(node) {
 
 flight<-function(s){
         f<-substring(s,1,1)
-        if(f %in% c('¹ú','¶«','ÄÏ')){
+        if(f %in% c('å›½','ä¸œ','å—')){
                 return (1)
-        }else if (f =='º£'){
+        }else if (f =='æµ·'){
                 return(0.5)
         }else{
                 return(0)
@@ -565,7 +565,7 @@ flight<-function(s){
 }
 
 idcard_age<-function(s){
-        birthday<-substr(s,7,10)# Éí·İÖ¤³öÉúÈÕÆÚ
+        birthday<-substr(s,7,10)# èº«ä»½è¯å‡ºç”Ÿæ—¥æœŸ
         age<-as.numeric(format(Sys.Date(),format='%Y'))-as.numeric(birthday)
         
         return(age)
@@ -581,11 +581,11 @@ city<-function(s){
 }
 
 idcard<-function(s){
-        d2<-read.csv('id_city.csv',header = T) # Ç°4Î»-³ÇÊĞ¶ÔÓ¦±í
+        d2<-read.csv('id_city.csv',header = T) # å‰4ä½-åŸå¸‚å¯¹åº”è¡¨
         d2[,2] <- as.character(d2[,2])
         d2[,2] <- gsub("\t","",d2[,2])
         d2[,2] <- gsub(" ","",d2[,2])
-        s4<-substr(s,1,4) # Éí·İÖ¤Ç°4Î»
+        s4<-substr(s,1,4) # èº«ä»½è¯å‰4ä½
         return(as.character(d2[d2[,1]==s4,2]))
 }
 
@@ -597,8 +597,8 @@ lastflight<-function(s){
 }
 
 Hangkong_y1_5<-function(a,b,a0){
-        #ÊäÈëa=a7,b=a8,id=a0
-        #Êä³öy1-y5,y26-y28
+        #è¾“å…¥a=a7,b=a8,id=a0
+        #è¾“å‡ºy1-y5,y26-y28
         if(is.na(a) | is.na(b) | a=="" | b==""){
                 c(0,0,0,0,0,0,0,0)       
         }else{
@@ -648,8 +648,8 @@ Hangkong_y1_5<-function(a,b,a0){
 }
 
 split_city<-function(a){
-        u<-gsub('´Î´Î','´Î',gsub(' ','',a))
-        t<-as.character(unlist(strsplit(u,'\\d+´Î,')))
+        u<-gsub('æ¬¡æ¬¡','æ¬¡',gsub(' ','',a))
+        t<-as.character(unlist(strsplit(u,'\\d+æ¬¡,')))
         u1 <- gsub("\\D"," ",u)
         k <- as.numeric(unlist(strsplit(u1," ")))
         k <- k[!is.na(k)]
