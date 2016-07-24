@@ -1,38 +1,95 @@
 library(data.tree)
 
+## only for test
+test <- function(){
+        rm(list=ls())
+        gc()
+        
+        setwd("D:/data/中行个人征信/中行个人征信共享")
+        source('D:/code/CreditCardTest/Credit_v0.R')
+        samples <- read.csv("数据样本0724.csv")
+        samples <- samples[,1:60]
+        # ct<-read.csv('id_city.csv',header=T)
+        # citynum <- 1:nrow(samples)
+        # for(i in 1:nrow(samples)){
+        #         citynum[i] <- substr(samples[i,2],1,4) 
+        # }
+        # samples <- samples[citynum %in% as.character(ct[,1]), ]
+        # which( citynum %in% as.character(ct[,1]) )
+
+        
+        aa <- 1:nrow(samples)
+        for(i in 1:nrow(samples)){
+                print(i)
+                fields0 <- samples[i,]
+                options(warn=-1)
+                aa[i] <- Credit_v0(fields0)[27]
+        }
+        
+        plot(1:length(aa), as.numeric(aa),type="b")
+        abline(x=21.5)
+        
+}
+
 Credit_v0 <- function(fields0){
         ## 输入原始字段：fields0; 原始字段顺序见文件：Dictionary_HQ_raw_v0.csv
         ## 输出打分格式： 姓名 身份证号 手机号 金融画像打分近期6个数字（五个部分和一个综合打分） 金融画像打分远期6个数字（五个部分和一个综合打分） 飞行画像打分6个数（5部分和一个综合打分） 金融远期和飞行打分综合6个数 （五个部分和一个综合打分）
         
         ## step 0: 由字符串解析出原始字段； 函数： ；原始字段表见文件：
+        # fields0 <- c("杨兴","110105196403085417","13051278289",
+        #              3,3,3,100000,20,11000,4,10000,20000,10000,
+        #              4,10000,3,20000,10000,10,10000,20000,8000,4,
+        #              4000,2,2000,1000,2000,3,2000,0,0,1000,
+        #              5,1000,3000,3,2,3,1000,3,2,4,
+        #              2,0.9,1,1,1,0.6,1,0.4,3,1,
+        #              0,5000,0,30000,1,1,0.3)
         
-        fields0 <- c(1,0.5,0.5,1,1,3,3,1,5,50000,1800,3000,9000,0.15,1,0,1,3,1,40,1,0.6,5,6,5,0.8)
+        personOne <- fields0[1:3]
+        fields0 <- fields0[-(1:3)]
         
+        for(i in 1:length(fields0)){
+                if(grepl("]",fields0[i]) | grepl("\\[",fields0[i]) | grepl("\\(",fields0[i]) | grepl("\\)",fields0[i])){
+                        tmp <- unlist(strsplit(as.character(fields0[i]),",") )[1]
+                        tmp <- gsub("\\[","",tmp)
+                        tmp <- gsub("]","",tmp)
+                        tmp <- gsub("\\(","",tmp)
+                        tmp <- gsub("\\)","",tmp)
+                        fields0[i] <- as.numeric(tmp)
+                }
+        }
+        
+        shenfenzhengNUM <- personOne[2]
         
         ## step 1: 由原始字段到衍生字段； 函数：transform_fileds； 衍生字段表见文件：
-        fields1 <-  transform_fileds(fields0)
-        fields1 <- fields1[1:72]
-        
+        trans <-  transform_fileds(fields0,shenfenzhengNUM)
+        fields1 <- trans$fields1
+        #fields1[is.na(fields1)] <- 0
+        nleaf <- trans$nleaf
+                
         ## step 2: 提取每个衍生字段的具体打分； 函数：fields_scores； 衍生字段具体打分表见文件：
-        #fields1 <- c(1,0.5,0.5,1,1,3,3,1,5,50000,1800,3000,9000,0.15,1,0,1,3,1,40,1,0.6,5,6,5,0.8)
-        scores1 <- fields_scores(fields1)
-        scores1 <- as.numeric(as.vector(scores1))
-        
+        scores1 <- fields_scores(fields1,nleaf)
+        scores1 <- as.numeric(scores1)
+        scores1[is.na(scores1)] <- 0
         
         ## step 3: 预构建金融画像和飞行画像的树；函数：trees_construct; 金融画像树状结构见文件：  飞行画像树状结构见文件：
         trees1 <- trees_construct()
         
         ## step 4: 计算每一个层次的打分，并获得最终输出打分； 函数：credit_scores;
-        scores <- credit_scores(trees1,scores1)
+        scores <- credit_scores(trees1,scores1,nleaf)
         
         ## step 5: Output
-        
-        
-        
+        result <- unlist(c(personOne,scores))
+        result
 }
 
-transform_fileds <- function(fields0){
+transform_fileds <- function(fields0, shenfenzhengNUM){
         
+        fields0I <- fields0
+        fields0 <- as.numeric(fields0[1:39])
+        fieldsHangkong <- fields0I[40:length(fields0I)]
+        
+        nleaf <- 1:3
+        fields1 <- 1:98
         ## 金融画像远期原始字段到衍生字段映射
         n <- 0
         fields1[n+1] <- fields0[n+9]/fields0[n+8]
@@ -75,8 +132,8 @@ transform_fileds <- function(fields0){
         ##fields1[n+32] <- shenfentezhi(nianling)
         ##fields1[n+33] <- juzhudi
         
-        fields1[n+32] <- 0
-        fields1[n+33] <- 0
+        fields1[n+32] <- idcard_age(shenfenzhengNUM)
+        fields1[n+33] <- city(idcard(shenfenzhengNUM))
         
         #xinyonglishi
         fields1[n+34] <- fields0[n+35]
@@ -92,105 +149,124 @@ transform_fileds <- function(fields0){
         
         
         ## 金融画像近期原始字段到衍生字段映射
-        n <- 43
-        fields1[n+1] <- fields0[n+24]/fields0[n+23]
-        fields1[n+2] <- fields0[n+24]/fields0[n+9]
-        fields1[n+3] <- fields0[n+25]/fields0[n+17]
-        fields1[n+4] <- 0
-        fields1[n+5] <- fields0[n+19]/fields0[n+25]
-        fields1[n+6] <- fields0[n+30]/fields0[n+17]
-        fields1[n+7] <- fields0[n+23]
-        fields1[n+8] <- fields0[n+22]
-        fields1[n+9] <- (fields0[n+23]/fields0[n+3])/(fields0[n+8]/fields0[n+12])
-        fields1[n+10] <- (fields0[n+22]/fields0[n+3])/(fields0[n+7]/fields0[n+12])
-        fields1[n+11] <- fields0[n+32]+fields0[n+21]
-        fields1[n+12] <- fields0[n+31]+fields0[n+20]
-        fields1[n+13] <- ((fields0[n+32]+fields0[n+21])/fields0[n+3])/((fields0[n+17]+fields0[n+6])/fields0[n+12])
-        fields1[n+14] <- ((fields0[n+31]+fields0[n+20])/fields0[n+3])/((fields0[n+16]+fields0[n+5])/fields0[n+12])
-        fields1[n+15] <- (fields[n+23]/(fields0[n+32]+fields0[n+21]))/(fields0[n+8]/(fields0[n+6]+fields0[n+17]))
-        fields1[n+16] <- fields0[n+23]/(fields0[n+32]+fields0[n+21])
-        fields1[n+17] <- ((fields0[n+32]+fields0[n+25])/(fields0[n+32]+fields0[n+21]))/((fields0[n+17]+fields0[n+10])/(fields0[n+17]+fields0[n+6]))
-        fields1[n+18] <- (fields0[n+32]+fields0[n+25])/(fields0[n+32]+fields0[n+21])
-        fields1[n+19] <- fields0[n+37]
-        fields1[n+20] <- 0
-        fields1[n+21] <- 0
-        fields1[n+22] <- 0
-        fields1[n+23] <- 0
-        fields1[n+24] <- fields0[n+32]
-        fields1[n+25] <- fields0[n+31]
-        fields1[n+26] <- (fields0[n+32]/fields0[n+3])/(fields0[n+17]/fields0[n+12])
-        fields1[n+27] <- (fields0[n+31]/fields0[n+3])(fields0[n+16]/fields0[n+12])
-        fields1[n+28] <- fields0[n+27]/fields0[n+33]
-        fields1[n+29] <- (fields0[n+27]/fields0[n+33])/(fields0[n+12]/fields0[n+18])
+        n1 <- 43
+        nleaf[1] <- n1
+        
+        fields1[n1+1] <- fields0[n+24]/fields0[n+23]
+        fields1[n1+2] <- fields0[n+24]/fields0[n+9]
+        fields1[n1+3] <- fields0[n+25]/fields0[n+17]
+        fields1[n1+4] <- 0
+        fields1[n1+5] <- fields0[n+19]/fields0[n+25]
+        fields1[n1+6] <- fields0[n+30]/fields0[n+17]
+        fields1[n1+7] <- fields0[n+23]
+        fields1[n1+8] <- fields0[n+22]
+        fields1[n1+9] <- (fields0[n+23]/fields0[n+3])/(fields0[n+8]/fields0[n+12])
+        fields1[n1+10] <- (fields0[n+22]/fields0[n+3])/(fields0[n+7]/fields0[n+12])
+        fields1[n1+11] <- fields0[n+32]+fields0[n+21]
+        fields1[n1+12] <- fields0[n+31]+fields0[n+20]
+        fields1[n1+13] <- ((fields0[n+32]+fields0[n+21])/fields0[n+3])/((fields0[n+17]+fields0[n+6])/fields0[n+12])
+        fields1[n1+14] <- ((fields0[n+31]+fields0[n+20])/fields0[n+3])/((fields0[n+16]+fields0[n+5])/fields0[n+12])
+        fields1[n1+15] <- (fields0[n+23]/(fields0[n+32]+fields0[n+21]))/(fields0[n+8]/(fields0[n+6]+fields0[n+17]))
+        fields1[n1+16] <- fields0[n+23]/(fields0[n+32]+fields0[n+21])
+        fields1[n1+17] <- ((fields0[n+32]+fields0[n+25])/(fields0[n+32]+fields0[n+21]))/((fields0[n+17]+fields0[n+10])/(fields0[n+17]+fields0[n+6]))
+        fields1[n1+18] <- (fields0[n+32]+fields0[n+25])/(fields0[n+32]+fields0[n+21])
+        fields1[n1+19] <- fields0[n+37]
+        fields1[n1+20] <- fields0[n+38] # zaixianshichang
+        fields1[n1+21] <- fields0[n+39] # shoujixiaofei 
+        fields1[n1+22] <- 0 # gaoguanrenzhi
+        fields1[n1+23] <- city(idcard(shenfenzhengNUM)) # juzhudi
+        fields1[n1+24] <- fields0[n+32]
+        fields1[n1+25] <- fields0[n+31]
+        fields1[n1+26] <- (fields0[n+32]/fields0[n+3])/(fields0[n+17]/fields0[n+12])
+        fields1[n1+27] <- (fields0[n+31]/fields0[n+3])/(fields0[n+16]/fields0[n+12])
+        fields1[n1+28] <- fields0[n+27]/fields0[n+33]
+        fields1[n1+29] <- (fields0[n+27]/fields0[n+33])/(fields0[n+12]/fields0[n+18])
         
 
         ## 航空原始字段到衍生字段映射
-        n <- 72
-        speflag <- c(1:5,19:21,23:26)
-        fields1[n+speflag] <- 0.5  #fields0[n+speflag]
-        fields1[n+6] <- fields0[n+10]
-        fields1[n+7] <- fields0[n+11]
-        fields1[n+8] <- fields0[n+10]/fields0[n+11]
-        fields1[n+9] <- fields0[n+1]
-        fields1[n+10] <- fields0[n+15]
-        fields1[n+11] <- fields0[n+15]/fields0[n+1]
-        fields1[n+12] <- fields0[n+13]*fields0[n+1]
-        fields1[n+13] <- fields0[n+13]
-        fields1[n+14] <- fields1[n+12]/fields1[n+10]
-        fields1[n+15] <- fields0[n+4]
-        fields1[n+16] <- fields0[n+4] +  fields0[n+5]
-        fields1[n+17] <- fields0[n+4]/fields0[n+1]
-        fields1[n+18] <- fields1[n+16]/fields0[n+1]
-        fields1[n+22] <- fields0[n+2]/fields0[n+1]
+        n <- 0
+        n2 <- 72
+        nleaf[2] <- n2
+
+        fields1[n2+19] <- flight(fieldsHangkong[n+9])
+        fields1[n2+20] <- idcard_age(shenfenzhengNUM)
+        fields1[n2+21] <- city(idcard(shenfenzhengNUM))
+        fields1[n2+23] <- lastflight(fieldsHangkong[n+18])
+        fields1[n2+c(1:5,24:26)] <- Hangkong_y1_5(fieldsHangkong[n+7], fieldsHangkong[n+8],shenfenzhengNUM) 
         
+        fields1[n2+6] <- as.numeric(fieldsHangkong[n+10])
+        fields1[n2+7] <- as.numeric(fieldsHangkong[n+11])
+        fields1[n2+8] <- as.numeric(fieldsHangkong[n+10])/as.numeric(fieldsHangkong[n+11])
+        fields1[n2+9] <- as.numeric(fieldsHangkong[n+1])
+        fields1[n2+10] <- as.numeric(fieldsHangkong[n+15])
+        fields1[n2+11] <- as.numeric(fieldsHangkong[n+15])/as.numeric(fieldsHangkong[n+1])
+        fields1[n2+12] <- as.numeric(fieldsHangkong[n+13])*as.numeric(fieldsHangkong[n+1])
+        fields1[n2+13] <- as.numeric(fieldsHangkong[n+13])
+        fields1[n2+14] <- as.numeric(fields1[n+12])/as.numeric(fields1[n+10])
+        fields1[n2+15] <- as.numeric(fieldsHangkong[n+4])
+        fields1[n2+16] <- as.numeric(fieldsHangkong[n+4]) + as.numeric(fieldsHangkong[n+5])
+        fields1[n2+17] <- as.numeric(fieldsHangkong[n+4])/as.numeric(fieldsHangkong[n+1])
+        fields1[n2+18] <- as.numeric(fields1[n+16])/as.numeric(fieldsHangkong[n+1])
+        fields1[n2+22] <- as.numeric(fieldsHangkong[n+2])/as.numeric(fieldsHangkong[n+1])
+
         
-        fields1
+        nleaf[3] <- length(fields1)
+        
+        list(fields1=fields1,nleaf=nleaf)
 }
 
-fields_scores <- function(fields1){
+fields_scores <- function(fields1,nleaf){
 
-        #options(stringsAsFactors=FALSE)
-        ## 金融画像的得分
+        n1 <- 1:nleaf[1]
+        n2 <- (nleaf[1]+1):nleaf[2]
+        n3 <- (nleaf[2]+1):nleaf[3]
         tmp <- getBreaks()
-        breaksL <- tmp$breas
-        labelsL <- tmp$labels
         
-        JinrongScore <- sapply(1:length(fields1), function(i){ 
-                #print(i)
+        #options(stringsAsFactors=FALSE)
+        ## 金融画像的远期得分
+        breaksL <- tmp$breas1
+        labelsL <- tmp$labels1
+        JinrongScore <- sapply(n1, function(i){
                 cut(as.numeric(fields1[i]), breaksL[[i]],labelsL[[i]])
         })
+        JinrongScore <- as.vector(JinrongScore)
         
+        ## 金融画像的远期得分
+        breaksL <- tmp$breas2
+        labelsL <- tmp$labels2
+        JinrongScore1 <- sapply(n2, function(i){
+               cut(as.numeric(fields1[i]), breaksL[[i-max(n1)]],labelsL[[i-max(n1)]])
+        })
+        JinrongScore1 <- as.vector(JinrongScore1)
         
-        scores1 <- JinrongScore
-               
-        # #航空字段的得分  
-        # tmp <- getBreaks()
-        # breaksL <- tmp$breas
-        # labelsL <- tmp$labels
-        # 
-        # ### only for test
-        # for(i in 1:length(breaksL)){
-        #         if(any(is.na(labelsL[[i]])) ){
-        #                 breaksL[[i]] <- c(-1,1)
-        #                 labelsL[[i]] <- 1
-        #                 }
-        #         }
-        # 
-        # HangkongScore <- sapply(1:length(fields1), function(i){ 
-        #         #print(i)
-        #         cut(as.numeric(fields1[i]), breaksL[[i]],labelsL[[i]])
-        #         })
-        # 
-        # 
-        # scores1 <- HangkongScore
+        #航空字段的得分
+        breaksL <- tmp$breas
+        labelsL <- tmp$labels
+
+        ### only for test
+        for(i in 1:length(breaksL)){
+                if(any(is.na(labelsL[[i]])) ){
+                        breaksL[[i]] <- c(-1,1)
+                        labelsL[[i]] <- 1
+                        }
+                }
+
+        HangkongScore <- sapply(n3, function(i){
+               cut(as.numeric(fields1[i]), breaksL[[i-max(n2)]],labelsL[[i-max(n2)]])
+                })
+        HangkongScore <- as.vector(HangkongScore)
+
+
+        scores1 <- c(JinrongScore, JinrongScore1, HangkongScore)
         
         scores1
 }
 
 getBreaks <- function(){
         
-        ## 金融画像字段得分映射
-        jinrongziduan <- read.csv("金融画像衍生字段表_LY_0723_合并.csv")
+        ## 金融画像远期字段得分映射
+        jinrongziduan <- read.csv("金融画像衍生字段表_LY_0723_Chang.csv")
+        jinrongziduan[,2] <- paste(jinrongziduan[,1],jinrongziduan[,2],sep="_")
         jinrongziduan[is.na(jinrongziduan[,3]),3] <- -Inf
         jinrongziduan[is.na(jinrongziduan[,4]),4] <- Inf
         uniziduan <- setdiff(unique(jinrongziduan[,2]),"")
@@ -205,28 +281,45 @@ getBreaks <- function(){
         }
         names(breas1) <- uniziduan
         
+        ## 金融画像近期字段得分映射
+        jinrongziduan1 <- read.csv("金融画像衍生字段表_LY_0723_Duan.csv")
+        jinrongziduan1[,2] <- paste(jinrongziduan1[,1],jinrongziduan1[,2],sep="_")
+        jinrongziduan1[is.na(jinrongziduan1[,3]),3] <- -Inf
+        jinrongziduan1[is.na(jinrongziduan1[,4]),4] <- Inf
+        uniziduan1 <- setdiff(unique(jinrongziduan1[,2]),"")
+        breas2 <- list()
+        labels2 <- list()
+        for(i in 1:length(uniziduan1)){
+                tmpsubs <- which(jinrongziduan1[,2]==uniziduan1[i])
+                tmp <- as.vector(jinrongziduan1[tmpsubs,3:4])
+                tmp <- c(tmp[,1],tmp[,2])
+                breas2[[i]] <- sort(unique(as.numeric(tmp)))
+                labels2[[i]] <- as.numeric(jinrongziduan1[tmpsubs,5])
+        }
+        names(breas2) <- uniziduan1
+        
         
         #航空字段的得分 
-        # hangkongziduan <- as.matrix( read.csv("航空数据衍生指标得分划分.csv") )
-        # ziduan <- setdiff(unique(hangkongziduan[,1]),"")
-        # for(i in 1:nrow(hangkongziduan)){
-        #         if(hangkongziduan[i,1]==""){
-        #                 hangkongziduan[i,1] <- hangkongziduan[i-1,1]
-        #         }
-        # }
-        # hangkongziduan[,"上界"] <- gsub("infty","Inf",hangkongziduan[,"上界"])
-        # 
-        # breas <- list()
-        # labels <- list()
-        # for(i in 1:length(ziduan)){
-        #         tmpsubs <- which(hangkongziduan[,1]==ziduan[i])
-        #         tmp <- as.vector(hangkongziduan[tmpsubs,c("下界","上界")])
-        #         breas[[i]] <- sort(unique(as.numeric(tmp)))
-        #         labels[[i]] <- as.numeric(hangkongziduan[tmpsubs,"得分"])
-        # }
-        # names(breas) <- ziduan
+        hangkongziduan <- as.matrix( read.csv("航空数据衍生指标得分划分.csv") )
+        ziduan <- setdiff(unique(hangkongziduan[,1]),"")
+        for(i in 1:nrow(hangkongziduan)){
+                if(hangkongziduan[i,1]==""){
+                        hangkongziduan[i,1] <- hangkongziduan[i-1,1]
+                }
+        }
+        hangkongziduan[,5] <- gsub("infty","Inf",hangkongziduan[,5])
+
+        breas <- list()
+        labels <- list()
+        for(i in 1:length(ziduan)){
+                tmpsubs <- which(hangkongziduan[,1]==ziduan[i])
+                tmp <- as.vector(hangkongziduan[tmpsubs,c(4,5)])
+                breas[[i]] <- sort(unique(as.numeric(tmp)))
+                labels[[i]] <- as.numeric(hangkongziduan[tmpsubs,6])
+        }
+        names(breas) <- ziduan
         
-        list(breas1=breas1,labels1=labels1)
+        list(breas1=breas1,labels1=labels1, breas2=breas2,labels2=labels2, breas=breas,labels=labels)
 
 }
 
@@ -421,28 +514,31 @@ trees_construct <- function(){
         list(tree1=tree1,tree2=tree2,tree3=tree3)
 }
 
-credit_scores <- function(trees1,scores1){
+credit_scores <- function(trees1,scores1,nleaf){
+        
+        n1 <- 1:nleaf[1]
+        n2 <- (nleaf[1]+1):nleaf[2]
+        n3 <- (nleaf[2]+1):nleaf[3]
         
         tree1 <- trees1$tree1
-        tree1$Set(value = scores1, filterFun = isLeaf)
+        tree1$Set(value = scores1[n1], filterFun = isLeaf)
         tree1$Do(function(node) node$value <- Valuef(node)[1], filterFun = isNotLeaf)
-        result1 <- Get(list(tree1$Shehuiguanxi1,tree1$Xingweipianhao2,tree1$Shenfentezhi3,tree1$Xinyonglishi4,tree1$Lvyuenengli5,tree1),attribute = "value")
-        
+        result1 <- Get(list(tree1$Shehuiguanxi,tree1$Shenfentezhi,tree1$Xinyonglishi,tree1$Xingweipianhao,tree1$Lvyuenengli,tree1),attribute = "value")
         
         tree2 <- trees1$tree2
-        tree2$Set(value = scores1, filterFun = isLeaf)
+        tree2$Set(value = scores1[n2], filterFun = isLeaf)
         tree2$Do(function(node) node$value <- Valuef(node)[1], filterFun = isNotLeaf)
-        result2 <- Get(list(tree2$Shehuiguanxi1,tree2$Xingweipianhao2,tree2$Shenfentezhi3,tree2$Xinyonglishi4,tree2$Lvyuenengli5,tree2),attribute = "value")
+        result2 <- Get(list(tree2$Shehuiguanxi,tree2$Shenfentezhi,tree2$Xinyonglishi,tree2$Xingweipianhao,tree2$Lvyuenengli,tree2),attribute = "value")
         
-        
-        # tree3 <- trees1$tree3
-        # tree3$Set(value = scores1, filterFun = isLeaf)
-        # tree3$Do(function(node) node$value <- Valuef(node)[1], filterFun = isNotLeaf)
-        # result3 <- Get(list(tree3$Shehuiguanxi1,tree3$Xingweipianhao2,tree3$Shenfentezhi3,tree3$Xinyonglishi4,tree3$Lvyuenengli5,tree3),attribute = "value")
-        # 
-        # result4 <- sapply(1:length(result2), function(i) weighted.mean(c(result2[i], result3[i]), w=c(3,1), na.rm = TRUE))
+        tree3 <- trees1$tree3
+        tree3$Set(value = scores1[n3], filterFun = isLeaf)
+        tree3$Do(function(node) node$value <- Valuef(node)[1], filterFun = isNotLeaf)
+        result3 <- Get(list(tree3$Shehuiguanxi1,tree3$Shenfentezhi3,tree3$Xinyonglishi4,tree3$Xingweipianhao2,tree3$Lvyuenengli5,tree3),attribute = "value")
 
-        result2       
+        result4 <- sapply(1:length(result2), function(i) weighted.mean(c(result2[i], result3[i]), w=c(3,1), na.rm = TRUE))
+
+        result <- c(result1,result2,result3,result4)
+        result  
 }
 
 Valuef <- function(node) {
@@ -456,3 +552,115 @@ Valuef <- function(node) {
         
         return (result)
 }
+
+#### pieces of functions to deal with raw fields0 with text
+
+flight<-function(s){
+        f<-substring(s,1,1)
+        if(f %in% c('国','东','南')){
+                return (1)
+        }else if (f =='海'){
+                return(0.5)
+        }else{
+                return(0)
+        }
+}
+
+idcard_age<-function(s){
+        birthday<-substr(s,7,10)# 身份证出生日期
+        age<-as.numeric(format(Sys.Date(),format='%Y'))-as.numeric(birthday)
+        
+        return(age)
+}
+
+city<-function(s){
+        d <- read.csv('city_grade.csv', header = T)
+        d[,1]<-as.character(d[,1])
+        k<-0
+        if(any(d$city==s)) k<-d$score[which(d$city==s)]
+        
+        return(k)
+}
+
+idcard<-function(s){
+        d2<-read.csv('id_city.csv',header = T) # 前4位-城市对应表
+        d2$f4<-as.character(d2$f4)
+        d2<-data.frame(d2)
+        s4<-substr(s,1,4) # 身份证前4位
+        return(as.character(d2$city[d2$f4==s4]))
+}
+
+lastflight<-function(s){
+        if(!( any(grepl("-",s)) | any(grepl("/",s)) ) ) s <- paste(substr(s,1,4),substr(s,5,6),substr(s,7,8),sep="-")
+        s<-as.Date(s,'%Y%m%d')
+        gap<-difftime(Sys.Date(),s,units='days')
+        return(gap)
+}
+
+Hangkong_y1_5<-function(a,b,a0){
+        #输入a=a7,b=a8,id=a0
+        #输出y1-y5,y26-y28
+        if(is.na(a) | is.na(b) | a=="" | b==""){
+                c(0,0,0,0,0,0,0,0)       
+        }else{
+                ct<-read.csv('id_city.csv',header=T)
+                
+                a<-split_city(a)
+                b<-split_city(b)
+                a<-rbind(a,b)
+                a<-as.data.frame(a)
+                a<-a[which(a$city!=''),]
+                b<-aggregate(a$times,by=list(a$city),sum)
+                names(b)<-c('city','times')
+                y28<-crossprod(b$times/sum(b$times))
+                
+                a<-merge(b,ct,by='city')
+                y26<-length(a$city)
+                
+                if(y26>0){
+                        t<-rep(0,length(a$city))
+                        for(i in 1:length(a$city))t[i]<-city(a[i,'city'])
+                        a<-cbind(a,score=t)
+                        y27<-length(a[which(a$score==1),'city'])
+                        y2<-y27/y26
+                        y3<-length(a[which(a$score==1|a$score==2),'city'])/y26
+                }else{
+                    y27 <- 0; y2 <- 0; y3 <- 0;    
+                }
+                
+                a<-a[order(-a$times),]
+                t<-rep(1,length(a$city))
+                if(length(a$city)>1)
+                        for(i in 2:length(a$city)){
+                                t[i]<-t[i-1]
+                                if(a$times[i]<a$times[i-1])t[i]<-t[i-1]+1
+                        }
+                a<-cbind(a,t)
+                a<-a[which(a$t<=3),]
+                if(length(a$city)>0) y1 <- mean(a[which(a$t==1),'score']) else y1<-NA
+                
+                idcity<-idcard(a0)
+                y4<-length(a[which(a$t==1&a$city==idcity),'city'])
+                y5<-length(a[which(a$t<=3&a$city==idcity),'city'])
+                
+                c(y1,y2,y3,y4,y5,y26,y27,y28)
+        }
+
+}
+
+split_city<-function(a){
+        u<-gsub('次次','次',gsub(' ','',a))
+        t<-as.character(unlist(strsplit(u,'\\d+次,')))
+        u1 <- gsub("\\D"," ",u)
+        k <- as.numeric(unlist(strsplit(u1," ")))
+        k <- k[!is.na(k)]
+        
+        if(length(k)==0){
+                k<-NA
+                t<-''
+        }
+        out<-as.data.frame(cbind(city=t,times=k))
+        out$times<-as.numeric(out$times)
+        return(out)
+}
+
