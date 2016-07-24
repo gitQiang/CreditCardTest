@@ -15,14 +15,14 @@ test <- function(){
                 print(i)
                 fields0 <- samples[i,]
                 tmp  <- Credit_v0(fields0)
-                aa[i] <- as.numeric(tmp[27])
+                aa[i] <- tmp$result[10]
                 
                 #cat(unlist(tmp$fields0), file="RawFields.txt", append=TRUE, sep = "\n")
                 #cat(unlist(tmp$fields1), file="DeriveFields.txt", append=TRUE, sep = "\n")
         }
         
         plot(1:length(aa), as.numeric(aa),type="b")
-        abline(v=21.5,col=2,lwd=2)
+        abline(x=21.5)
         
 }
 
@@ -42,7 +42,6 @@ Credit_v0 <- function(fields0){
                         tmp <- gsub("\\(","",tmp)
                         tmp <- gsub("\\)","",tmp)
                         fields0[i] <- as.numeric(tmp)
-                        if(fields0[i]==0) fields0[i]=1
                 }
         }
         
@@ -57,7 +56,7 @@ Credit_v0 <- function(fields0){
         ## step 2: 提取每个衍生字段的具体打分； 函数：fields_scores； 衍生字段具体打分表见文件：
         scores1 <- fields_scores(fields1,nleaf)
         scores1 <- as.numeric(scores1)
-        #scores1[is.na(scores1)] <- 0
+        scores1[is.na(scores1)] <- 0
         
         ## step 3: 预构建金融画像和飞行画像的树；函数：trees_construct; 金融画像树状结构见文件：  飞行画像树状结构见文件：
         trees1 <- trees_construct()
@@ -67,9 +66,9 @@ Credit_v0 <- function(fields0){
         
         ## step 5: Output
         result <- unlist(c(personOne,scores))
-        result
+        #result
         
-        #list(result=result,fields0=fields0, fields1=fields1)
+        list(result=result,fields0=fields0, fields1=fields1)
 }
 
 transform_fileds <- function(fields0, shenfenzhengNUM){
@@ -217,8 +216,7 @@ fields_scores <- function(fields1,nleaf){
         breaksL <- tmp$breas1
         labelsL <- tmp$labels1
         JinrongScore <- sapply(n1, function(i){
-                getScores(as.numeric(fields1[i]), breaksL[[i]])
-                #cut(as.numeric(fields1[i]), breaksL[[i]],labelsL[[i]])
+                cut(as.numeric(fields1[i]), breaksL[[i]],labelsL[[i]])
         })
         JinrongScore <- as.vector(JinrongScore)
         
@@ -226,7 +224,7 @@ fields_scores <- function(fields1,nleaf){
         breaksL <- tmp$breas2
         labelsL <- tmp$labels2
         JinrongScore1 <- sapply(n2, function(i){
-                getScores(as.numeric(fields1[i]), breaksL[[i-max(n1)]])
+               cut(as.numeric(fields1[i]), breaksL[[i-max(n1)]],labelsL[[i-max(n1)]])
         })
         JinrongScore1 <- as.vector(JinrongScore1)
         
@@ -234,8 +232,16 @@ fields_scores <- function(fields1,nleaf){
         breaksL <- tmp$breas
         labelsL <- tmp$labels
 
+        ### only for test
+        for(i in 1:length(breaksL)){
+                if(any(is.na(labelsL[[i]])) ){
+                        breaksL[[i]] <- c(-1,1)
+                        labelsL[[i]] <- 1
+                        }
+                }
+
         HangkongScore <- sapply(n3, function(i){
-                getScores(as.numeric(fields1[i]), breaksL[[i-max(n2)]])
+               cut(as.numeric(fields1[i]), breaksL[[i-max(n2)]],labelsL[[i-max(n2)]])
                 })
         HangkongScore <- as.vector(HangkongScore)
 
@@ -257,9 +263,10 @@ getBreaks <- function(){
         labels1 <- list()
         for(i in 1:length(uniziduan)){
                 tmpsubs <- which(jinrongziduan[,2]==uniziduan[i])
-                tmp <- jinrongziduan[tmpsubs,3:5]
-                breas1[[i]] <- tmp
-                labels1[[i]] <- 0 #as.numeric(jinrongziduan[tmpsubs,5])
+                tmp <- as.vector(jinrongziduan[tmpsubs,3:4])
+                tmp <- c(tmp[,1],tmp[,2])
+                breas1[[i]] <- sort(unique(as.numeric(tmp)))
+                labels1[[i]] <- as.numeric(jinrongziduan[tmpsubs,5])
         }
         names(breas1) <- uniziduan
         
@@ -273,9 +280,10 @@ getBreaks <- function(){
         labels2 <- list()
         for(i in 1:length(uniziduan1)){
                 tmpsubs <- which(jinrongziduan1[,2]==uniziduan1[i])
-                tmp <- jinrongziduan1[tmpsubs,3:5]
-                breas2[[i]] <- tmp
-                labels2[[i]] <- 0 #as.numeric(jinrongziduan1[tmpsubs,5])
+                tmp <- as.vector(jinrongziduan1[tmpsubs,3:4])
+                tmp <- c(tmp[,1],tmp[,2])
+                breas2[[i]] <- sort(unique(as.numeric(tmp)))
+                labels2[[i]] <- as.numeric(jinrongziduan1[tmpsubs,5])
         }
         names(breas2) <- uniziduan1
         
@@ -294,30 +302,14 @@ getBreaks <- function(){
         labels <- list()
         for(i in 1:length(ziduan)){
                 tmpsubs <- which(hangkongziduan[,1]==ziduan[i])
-                tmp <- hangkongziduan[tmpsubs,4:6]
-                breas[[i]] <- tmp #sort(unique(as.numeric(tmp)))
-                labels[[i]] <- 0 #as.numeric(hangkongziduan[tmpsubs,6])
+                tmp <- as.vector(hangkongziduan[tmpsubs,c(4,5)])
+                breas[[i]] <- sort(unique(as.numeric(tmp)))
+                labels[[i]] <- as.numeric(hangkongziduan[tmpsubs,6])
         }
         names(breas) <- ziduan
         
         list(breas1=breas1,labels1=labels1, breas2=breas2,labels2=labels2, breas=breas,labels=labels)
 
-}
-
-getScores <- function(f,breaksL){
-        
-        if(any(is.na(breaksL))){
-                f1 <- NA
-        }else if(is.na(f)){
-                f1 <- NA
-        }else{
-                for(i in 1:nrow(breaksL)){
-                        if(f>breaksL[i,1] & f <= breaksL[i,2]){
-                                f1 <- breaksL[i,3]
-                        }
-                }
-        }
-        f1
 }
 
 trees_construct <- function(){
@@ -375,7 +367,7 @@ trees_construct <- function(){
         Zaixianshichang_tree1 <- Shehuiguanxi_tree1$AddChild("Zaixianshichang")
         Shoujixiaofei_tree1 <- Shehuiguanxi_tree1$AddChild("Shoujixiaofei")
         Shenfentezhi_tree1 <- tree1$AddChild("Shenfentezhi")
-        Nianling_tree1 <-  Shenfentezhi_tree1$AddChild("Nianling")
+        Nianling_tree1 <-  Shenfentezhi_tree1$AddChild("Shenfentezhi")
         #Gaoguanrenzhi_tree1 <-  Shenfentezhi_tree1$AddChild("Gaoguanrenzhi")
         #GerentouziShen_tree1 <-  Shenfentezhi_tree1$AddChild("GerentouziShen")
         Juzhudi_tree1 <-  Shenfentezhi_tree1$AddChild("Juzhudi")
@@ -534,8 +526,7 @@ credit_scores <- function(trees1,scores1,nleaf){
 
         result4 <- sapply(1:length(result2), function(i) weighted.mean(c(result2[i], result3[i]), w=c(3,1), na.rm = TRUE))
 
-        result2[2] <- result1[2] ##!!!!!
-        result <- c(result2,result1,result3,result4)
+        result <- c(result1,result2,result3,result4)
         result  
 }
 
@@ -582,11 +573,10 @@ city<-function(s){
 
 idcard<-function(s){
         d2<-read.csv('id_city.csv',header = T) # 前4位-城市对应表
-        d2[,2] <- as.character(d2[,2])
-        d2[,2] <- gsub("\t","",d2[,2])
-        d2[,2] <- gsub(" ","",d2[,2])
+        d2$f4<-as.character(d2$f4)
+        d2<-data.frame(d2)
         s4<-substr(s,1,4) # 身份证前4位
-        return(as.character(d2[d2[,1]==s4,2]))
+        return(as.character(d2$city[d2$f4==s4]))
 }
 
 lastflight<-function(s){
