@@ -83,14 +83,24 @@ Credit_v0 <- function(fields0){
         ## step 0: 由字符串解析出原始字段； 函数： ；原始字段表见文件：
 
         ## 首先判断是否具有一票否决权
+        yipiaoFlag <- 0
         personOne <- fields0[1:3]
         shenfenzhengNUM <- personOne[2]
         oneage <- idcard_age(shenfenzhengNUM)
+        siFainfo <- read.csv("个人司法查询.csv")
         XinYongCut <- 0.3
         
         if(oneage <= 18 | oneage>=60){
                 result <- c(personOne,rep(0,27),"年龄")
-        }else{
+                yipiaoFlag <- 1
+        }else if( any(siFainfo[,2]==shenfenzhengNUM) ){
+                tmpsub <- which(siFainfo[,2]==shenfenzhengNUM)
+                if(siFainfo[tmpsub,3]>0){
+                        ## 司法记录
+                        result <- c(personOne,rep(0,27),"司法记录")
+                        yipiaoFlag <- 1
+                }
+        }else if(yipiaoFlag == 0){
                 fields0 <- fields0[-(1:3)]
                 for(i in 1:length(fields0)){
                         if(grepl("]",fields0[i]) | grepl("\\[",fields0[i]) | grepl("\\(",fields0[i]) | grepl("\\)",fields0[i])){
@@ -141,13 +151,9 @@ Credit_v0 <- function(fields0){
         if(result1[165] < XinYongCut){ 
                 ## 信用历史
                 result <- c(result1,"信用历史") #！！！！！
-        }else if(FALSE){
-                ## 司法记录
-                result <- c(result1,"司法记录")
         }else{
                 result <- c(result1,0)         
         }
-        
         
         #result
         
