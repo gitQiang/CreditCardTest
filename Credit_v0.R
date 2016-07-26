@@ -16,10 +16,16 @@ test <- function(){
         rawfieN <- unlist(read.csv("所有原始字段表.csv",header = F)[,1])
         newfieN <- unlist(read.csv("所有衍生字段表.csv",header = F))
         
-        aa <- matrix(-1,27,49)
+        treeNodes <- read.table("AllTreesNodes.txt")
+        treeNodes <- rbind(cbind(c("姓名","身份证号","手机号"),1),treeNodes,cbind(c("社会关系","身份特质","信用历史","行为偏好","履约能力","综合","一票否决"),1))
+        
+        aa <- matrix(-1,28,49)
+        aasubs <- c(107,110,113,72,83,71,49,52,55,2,25,1,156,150,135,153,124,123)
         bb <- matrix(-1,60,49)
-        cc <- matrix(-1,101,49)
-        dd <- matrix(-1,101,49)
+        cc <- matrix(-1,103,49)
+        dd <- matrix(-1,103,49)
+        ee <- matrix(-1,169,49)
+        
         colnames(aa) <- samsN
         colnames(bb) <- samsN
         colnames(cc) <- samsN
@@ -33,93 +39,116 @@ test <- function(){
                 print(i)
                 fields0 <- samples[i,]
                 tmp  <- Credit_v0(fields0)
-                aa[,i] <- unlist(tmp$result)
+                aa[,i] <- unlist(tmp$result[c(1:3,aasubs+3,163:169)])
+                
                 bb[,i] <- unlist(c(fields0[1:3], tmp$fields0))
                 cc[,i] <- unlist(c(fields0[1:3], tmp$fields1))
                 dd[,i] <- unlist(c(fields0[1:3], tmp$scores1))
-                tmp0[i] <- tmp$result[27]
+                ee[,i] <- unlist(tmp$result)
+                tmp0[i] <- tmp$result[168]
         }
-        
-        # write.csv(aa,file="样本输出矩阵.csv",quote=FALSE)
-        # write.table(bb,file="原始指标矩阵.xls",quote=FALSE,sep="\t")
-        # write.table(t(bb),file="原始指标矩阵转置.xls",quote=FALSE,sep="\t")
-        # write.csv(cc,file="衍生指标矩阵.csv",quote=FALSE)
-        # write.csv(dd,file="衍生打分矩阵.csv",quote=FALSE)
+        ee <- cbind(treeNodes,ee)
+        write.csv(aa,file="样本输出矩阵.csv",quote=FALSE)
+        write.table(bb,file="原始指标矩阵.xls",quote=FALSE,sep="\t")
+        write.table(t(bb),file="原始指标矩阵转置.xls",quote=FALSE,sep="\t")
+        write.csv(cc,file="衍生指标矩阵.csv",quote=FALSE)
+        write.csv(dd,file="衍生打分矩阵.csv",quote=FALSE)
+        write.table(ee,file="所有打分矩阵.xls",sep="\t",quote=FALSE,row.names=FALSE,col.names=FALSE)
         plot(1:length(tmp0), as.numeric(tmp0),type="b")
         abline(v=21.5,col=2,lwd=2)
         
-        sample1 <- 1-as.numeric(aa[27,1:21])
-        sample2 <- 1-as.numeric(aa[27,22:49])
+        sample1 <- as.numeric(aa[27,1:21])
+        sample2 <- as.numeric(aa[27,22:49])
         # create ECDF of data
-        cdf1 <- ecdf(sample1) 
-        cdf2 <- ecdf(sample2) 
+        cdf1 <- ecdf(sample1)
+        cdf2 <- ecdf(sample2)
         x0 <- seq(0,1,0.0001)
         y1 <- cdf1(x0)
         y2 <- cdf2(x0)
         xv <- which.max(abs(y2-y1))
-        
-        plot(cdf1, verticals=TRUE, do.points=FALSE, col=1,lwd=2) 
+
+        plot(cdf1, verticals=TRUE, do.points=FALSE, col=1,lwd=2)
         plot(cdf2, verticals=TRUE, do.points=FALSE, col=2, add=TRUE,lwd=2)
         abline(v=x0[xv],col="blue",lwd=2)
         legend("topleft",legend=c("坏样本","好样本"),col=1:2,lwd=2)
         max(abs(y1-y2))
-        
-        
+
 }
 
 Credit_v0 <- function(fields0){
         ## 输入原始字段：fields0; 原始字段顺序见文件：Dictionary_HQ_raw_v0.csv
         ## 输出打分格式： 姓名 身份证号 手机号 金融画像打分近期6个数字（五个部分和一个综合打分） 金融画像打分远期6个数字（五个部分和一个综合打分） 飞行画像打分6个数（5部分和一个综合打分） 金融远期和飞行打分综合6个数 （五个部分和一个综合打分）
         
+
         ## step 0: 由字符串解析出原始字段； 函数： ；原始字段表见文件：
+
+        ## 首先判断是否具有一票否决权
         personOne <- fields0[1:3]
-        fields0 <- fields0[-(1:3)]
+        shenfenzhengNUM <- personOne[2]
+        oneage <- idcard_age(shenfenzhengNUM)
+        XinYongCut <- 0.3
         
-        for(i in 1:length(fields0)){
-                if(grepl("]",fields0[i]) | grepl("\\[",fields0[i]) | grepl("\\(",fields0[i]) | grepl("\\)",fields0[i])){
-                        
-                        tmp <- unlist(strsplit(as.character(fields0[i]),",") )[1] ## lower bound
-                        tmp <- gsub("\\[","",tmp)
-                        tmp <- gsub("]","",tmp)
-                        tmp <- gsub("\\(","",tmp)
-                        tmp <- gsub("\\)","",tmp)
-                        
-                        tmp1 <- unlist(strsplit(as.character(fields0[i]),",") )[2] ## upper bound
-                        tmp1 <- gsub("\\[","",tmp1)
-                        tmp1 <- gsub("]","",tmp1)
-                        tmp1 <- gsub("\\(","",tmp1)
-                        tmp1 <- gsub("\\)","",tmp1)
-                        
-                        tmpaa <- c(as.numeric(tmp),as.numeric(tmp1))
-                        
-                        fields0[i] <- min(tmpaa[!is.na(tmpaa)])
-                        if(fields0[i]==0) fields0[i]=1
+        if(oneage <= 18 | oneage>=60){
+                result <- c(personOne,rep(0,27),"年龄")
+        }else{
+                fields0 <- fields0[-(1:3)]
+                for(i in 1:length(fields0)){
+                        if(grepl("]",fields0[i]) | grepl("\\[",fields0[i]) | grepl("\\(",fields0[i]) | grepl("\\)",fields0[i])){
+                                
+                                tmp <- unlist(strsplit(as.character(fields0[i]),",") )[1] ## lower bound
+                                tmp <- gsub("\\[","",tmp)
+                                tmp <- gsub("]","",tmp)
+                                tmp <- gsub("\\(","",tmp)
+                                tmp <- gsub("\\)","",tmp)
+                                
+                                tmp1 <- unlist(strsplit(as.character(fields0[i]),",") )[2] ## upper bound
+                                tmp1 <- gsub("\\[","",tmp1)
+                                tmp1 <- gsub("]","",tmp1)
+                                tmp1 <- gsub("\\(","",tmp1)
+                                tmp1 <- gsub("\\)","",tmp1)
+                                
+                                tmpaa <- c(as.numeric(tmp),as.numeric(tmp1))
+                                
+                                fields0[i] <- min(tmpaa[!is.na(tmpaa)])
+                                if(fields0[i]==0) fields0[i]=1
+                        }
                 }
+                
+                ## step 1: 由原始字段到衍生字段； 函数：transform_fileds； 衍生字段表见文件：
+                trans <-  transform_fileds(fields0,shenfenzhengNUM)
+                fields1 <- trans$fields1
+                nleaf <- trans$nleaf
+                nspe <- trans$nspe
+                
+                ## step 2: 提取每个衍生字段的具体打分； 函数：fields_scores； 衍生字段具体打分表见文件：
+                scores1 <- fields_scores(fields1,nleaf)
+                #print(all(is.na(scores1[nspe])))
+                scores1 <- as.numeric(scores1)
+                scores1[nspe] <- fields1[nspe]
+                #scores1[is.na(scores1)] <- 0
+                
+                ## step 3: 预构建金融画像和飞行画像的树；函数：trees_construct; 金融画像树状结构见文件：  飞行画像树状结构见文件：
+                trees1 <- trees_construct()
+                
+                ## step 4: 计算每一个层次的打分，并获得最终输出打分； 函数：credit_scores;
+                scores <- credit_scores(trees1,scores1,nleaf)
+                
+                ## step 5: Output
+                result1 <- unlist(c(personOne,scores))
         }
         
-        shenfenzhengNUM <- personOne[2]
+        #!!!!! 24 sub only for test
+        if(result1[165] < XinYongCut){ 
+                ## 信用历史
+                result <- c(result1,"信用历史") #！！！！！
+        }else if(FALSE){
+                ## 司法记录
+                result <- c(result1,"司法记录")
+        }else{
+                result <- c(result1,0)         
+        }
         
-        ## step 1: 由原始字段到衍生字段； 函数：transform_fileds； 衍生字段表见文件：
-        trans <-  transform_fileds(fields0,shenfenzhengNUM)
-        fields1 <- trans$fields1
-        nleaf <- trans$nleaf
-        nspe <- trans$nspe
-                
-        ## step 2: 提取每个衍生字段的具体打分； 函数：fields_scores； 衍生字段具体打分表见文件：
-        scores1 <- fields_scores(fields1,nleaf)
-        #print(all(is.na(scores1[nspe])))
-        scores1 <- as.numeric(scores1)
-        scores1[nspe] <- fields1[nspe]
-        #scores1[is.na(scores1)] <- 0
         
-        ## step 3: 预构建金融画像和飞行画像的树；函数：trees_construct; 金融画像树状结构见文件：  飞行画像树状结构见文件：
-        trees1 <- trees_construct()
-        
-        ## step 4: 计算每一个层次的打分，并获得最终输出打分； 函数：credit_scores;
-        scores <- credit_scores(trees1,scores1,nleaf)
-        
-        ## step 5: Output
-        result <- unlist(c(personOne,scores))
         #result
         
         list(result=result,fields0=fields0, fields1=fields1,scores1=scores1)
@@ -132,7 +161,7 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         fieldsHangkong <- fields0I[40:length(fields0I)]
         
         nleaf <- 1:3
-        fields1 <- 1:98
+        fields1 <- 1:100
         ## 金融画像远期原始字段到衍生字段映射
         n <- 0
         fields1[n+1] <- fields0[n+9]/fields0[n+8]
@@ -152,19 +181,19 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         fields1[n+15] <- fields0[n+36]
         
         #lvyuenengli
-        fields1[n+16] <- fields0[n+8]/fields0[n+12]
-        fields1[n+17] <- fields0[n+7]/fields0[n+12]
-        fields1[n+18] <- fields0[n+9]/fields0[n+12]
+        fields1[n+16] <- fields0[n+8]/12
+        fields1[n+17] <- fields0[n+7]/12
+        fields1[n+18] <- fields0[n+9]/12
         fields1[n+19] <- (fields0[n+10]+fields0[n+17])/12
         fields1[n+20] <- (fields0[n+15]+fields0[n+4])/12
         fields1[n+21] <- fields0[n+17]/fields0[n+16]
         fields1[n+22] <- fields0[n+16]/12
         fields1[n+23] <- fields0[n+6]/12
         fields1[n+24] <- fields0[n+5]/12
-        fields1[n+25] <- fields0[n+8]/(fields0[n+17]+fields0[n+6])
-        fields1[n+26] <- (fields0[n+10]+fields0[n+17])/(fields0[n+17]+fields0[n+6])
+        fields1[n+25] <- fields0[n+8]/(fields0[n+17]+fields0[n+10])
+        fields1[n+26] <- (fields0[n+10]+fields0[n+17])/(fields0[n+6])
         fields1[n+27] <- fields0[n+37]
-        fields1[n+28] <- fields0[n+8]
+        fields1[n+28] <- fields0[n+8]-fields0[n+6]
         fields1[n+29] <- fields0[n+9]
         
         #shehuiguanxi
@@ -181,18 +210,19 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         #xinyonglishi
         fields1[n+34] <- fields0[n+35]
         fields1[n+35] <- fields0[n+34]
-        fields1[n+36] <- fields0[n+17]/fields0[n+12]
-        fields1[n+37] <- fields0[n+16]/fields0[n+12]
+        fields1[n+36] <- fields0[n+17]/12
+        fields1[n+37] <- fields0[n+16]/12
         fields1[n+38] <- fields0[n+15]/fields0[n+17]
         fields1[n+39] <- fields0[n+17]/fields0[n+16]
         fields1[n+40] <- fields0[n+39]
         fields1[n+41] <- fields0[n+12]/12
         fields1[n+42] <- fields0[n+11]/12
         fields1[n+43] <- fields0[n+12]/fields0[n+18]
+        fields1[n+44] <- fields0[n+18]-fields0[n+12]
         
         
         ## 金融画像近期原始字段到衍生字段映射
-        n1 <- 43
+        n1 <- 44
         nleaf[1] <- n1
         
         fields1[n1+1] <- fields0[n+24]/fields0[n+23]
@@ -203,12 +233,12 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         fields1[n1+6] <- fields0[n+30]/fields0[n+17]
         fields1[n1+7] <- fields0[n+23]
         fields1[n1+8] <- fields0[n+22]
-        fields1[n1+9] <- (fields0[n+23]/fields0[n+3])/(fields0[n+8]/fields0[n+12])
-        fields1[n1+10] <- (fields0[n+22]/fields0[n+3])/(fields0[n+7]/fields0[n+12])
+        fields1[n1+9] <- (fields0[n+23]/3)/(fields0[n+8]/12)
+        fields1[n1+10] <- (fields0[n+22]/3)/(fields0[n+7]/12)
         fields1[n1+11] <- fields0[n+32]+fields0[n+21]
         fields1[n1+12] <- fields0[n+31]+fields0[n+20]
-        fields1[n1+13] <- ((fields0[n+32]+fields0[n+21])/fields0[n+3])/((fields0[n+17]+fields0[n+6])/fields0[n+12])
-        fields1[n1+14] <- ((fields0[n+31]+fields0[n+20])/fields0[n+3])/((fields0[n+16]+fields0[n+5])/fields0[n+12])
+        fields1[n1+13] <- ((fields0[n+32]+fields0[n+21])/3)/((fields0[n+17]+fields0[n+6])/12)
+        fields1[n1+14] <- ((fields0[n+31]+fields0[n+20])/3)/((fields0[n+16]+fields0[n+5])/12)
         fields1[n1+15] <- (fields0[n+23]/(fields0[n+32]+fields0[n+21]))/(fields0[n+8]/(fields0[n+6]+fields0[n+17]))
         fields1[n1+16] <- fields0[n+23]/(fields0[n+32]+fields0[n+21])
         fields1[n1+17] <- ((fields0[n+32]+fields0[n+25])/(fields0[n+32]+fields0[n+21]))/((fields0[n+17]+fields0[n+10])/(fields0[n+17]+fields0[n+6]))
@@ -220,15 +250,16 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         fields1[n1+23] <- city(idcard(shenfenzhengNUM)) # juzhudi
         fields1[n1+24] <- fields0[n+32]
         fields1[n1+25] <- fields0[n+31]
-        fields1[n1+26] <- (fields0[n+32]/fields0[n+3])/(fields0[n+17]/fields0[n+12])
-        fields1[n1+27] <- (fields0[n+31]/fields0[n+3])/(fields0[n+16]/fields0[n+12])
+        fields1[n1+26] <- (fields0[n+32]/3)/(fields0[n+17]/12)
+        fields1[n1+27] <- (fields0[n+31]/3)/(fields0[n+16]/12)
         fields1[n1+28] <- fields0[n+27]/fields0[n+33]
         fields1[n1+29] <- (fields0[n+27]/fields0[n+33])/(fields0[n+12]/fields0[n+18])
+        fields1[n1+30] <- fields0[n+33] - fields0[n+27]
         
 
         ## 航空原始字段到衍生字段映射
         n <- 0
-        n2 <- 72
+        n2 <- 74
         nleaf[2] <- n2
 
         fields1[n2+19] <- flight(fieldsHangkong[n+9])
@@ -246,11 +277,11 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         fields1[n2+11] <- as.numeric(fieldsHangkong[n+15])/as.numeric(fieldsHangkong[n+1])
         fields1[n2+12] <- as.numeric(fieldsHangkong[n+13])*as.numeric(fieldsHangkong[n+1])
         fields1[n2+13] <- as.numeric(fieldsHangkong[n+13])
-        fields1[n2+14] <- as.numeric(fields1[n+12])/as.numeric(fields1[n+10])
+        fields1[n2+14] <- as.numeric(fields1[n2+12])/as.numeric(fields1[n2+10])
         fields1[n2+15] <- as.numeric(fieldsHangkong[n+4])
         fields1[n2+16] <- as.numeric(fieldsHangkong[n+4]) + as.numeric(fieldsHangkong[n+5])
         fields1[n2+17] <- as.numeric(fieldsHangkong[n+4])/as.numeric(fieldsHangkong[n+1])
-        fields1[n2+18] <- as.numeric(fields1[n+16])/as.numeric(fieldsHangkong[n+1])
+        fields1[n2+18] <- as.numeric(fields1[n2+16])/as.numeric(fieldsHangkong[n+1])
         fields1[n2+22] <- as.numeric(fieldsHangkong[n+2])/as.numeric(fieldsHangkong[n+1])
 
         nleaf[3] <- length(fields1)
@@ -461,6 +492,7 @@ trees_construct <- function(){
         huankuanjine12 <- Shouxindu_tree1$AddChild("huankuanjine12")
         huankuanbishu12 <- Shouxindu_tree1$AddChild("huankuanbishu12")
         huanqingbili12 <- Shouxindu_tree1$AddChild("huanqingbili12")
+        huanqingtuoqiane12 <- Shouxindu_tree1$AddChild("huanqingtuoqiane12")
         
         tree1$Set(weight = c(10,2,4,4,3,2,8,0,3,1,
                              5,4,2,1,5,4,2,5,5,2,
@@ -468,12 +500,12 @@ trees_construct <- function(){
                              2,3,7,4,2,4,3,5,7,3,
                              4,6,4,2,6,4,6,4,1,5,
                              5,1,5,5,3,4,8,2,2,6,
-                             3,3,2,2,2,6,4,1,5)/10)
+                             3,3,2,2,2,6,4,1,5,5)/10)
 					 
                                                
         ## 金融画像近期
         ## 金融画像 short term
-        tree2 <- Node$new("JinronghuaxiangYuan")
+        tree2 <- Node$new("JinronghuaxiangJin")
         Xingweipianhao_tree2 <- tree2$AddChild("Xingweipianhao")
         Touzi_tree2 <- Xingweipianhao_tree2$AddChild("Touzi")
         Touzizhanbi_tree2 <- Touzi_tree2$AddChild("Touzizhanbi")
@@ -525,13 +557,14 @@ trees_construct <- function(){
         Shouxindu_tree2 <- Xinyonglishi_tree2$AddChild("Shouxindu")
         huankuanjinebi_tree2 <- Shouxindu_tree2$AddChild("huankuanjinebi")
         huankuanjinebilv_tree2 <- Shouxindu_tree2$AddChild("huankuanjinebilv")
+        huankuantuoqiane_tree2 <- Shouxindu_tree2$AddChild("huankuantuoqiane")
         
         tree2$Set(weight = c(10,2,5,5,5,5,5,5,5,5,
                              5,5,3,8,3,7,7,3,3,7,
                              3,3,7,7,3,3,7,3,4,6,
                              3,7,4,3,7,2,1,5,5,1,
                              5,5,3,4,2,2,3,3,6,5,
-                             5)/10)  
+                             5,5)/10)  
 
 					 
         ## 飞行数据画像
@@ -603,6 +636,13 @@ credit_scores <- function(trees1,scores1,nleaf){
 
         result2[2] <- result1[2] ##!!!!!
         result <- c(result2,result1,result3,result4)
+        
+        # ### test output !!!
+        aa1 <- tree1$Get("value")
+        aa2 <- tree2$Get("value")
+        aa3 <- tree3$Get("value")
+        result <- c(aa1,aa2,aa3,result4)
+        
         result  
 }
 
@@ -622,8 +662,8 @@ Valuef <- function(node) {
 
 flight<-function(s){
         f<-substring(s,1,1)
-        if(f %in% c('国','东','南')){
-                return (1)
+        if(f=="国" | f=="东" | f=="南"){
+                return(1)
         }else if (f =='海'){
                 return(0.5)
         }else{
