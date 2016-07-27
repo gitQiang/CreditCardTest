@@ -97,4 +97,78 @@ write.csv(newziduan,file="金融画像衍生字段表_LY_0723.csv",quote=FALSE,row.names 
 
 
 
+### 树上所有点的权重 =======================================
+source('D:/code/CreditCardTest/Credit_v0_1.R')
+trees1 <- trees_construct()
+tree1 <- trees1$tree1
+wV1 <- tree1$Get("weight")
 
+tree2 <- trees1$tree2
+wV2 <- tree2$Get("weight")
+
+tree3 <- trees1$tree3
+wV3 <- tree3$Get("weight")
+
+treeNodes <- c(names(wV1),names(wV2),names(wV3))
+treeweigs <- c(wV1,wV2,wV3)
+write.table(cbind(treeNodes,treeweigs),file="AllTreesNodes.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+
+
+### 民生坏样本===========================================
+library(xlsx)
+setwd("D:/data/中行个人征信/中行个人征信共享")
+source('D:/code/CreditCardTest/Credit_v0.R')
+samples <- read.xlsx2("数据样本0724.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+
+
+sams <- read.xlsx2("民生坏样本.xls",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+sams <- sams[!duplicated(sams[,3]),]
+# idxALL <- sams[,3]
+# 
+# 
+# idx <- samples[,2]
+# subs <- rep(-1,length(idx))
+# for(i in 1:length(idx)){
+#         tmp <- substr(idx[i],1,14)
+#         if(sum(grepl(tmp,idxALL)) > 0) subs[i] <- idxALL[which(grepl(tmp,idxALL))] 
+# }
+
+
+### 所有好坏样本的打分=======================================
+library(xlsx)
+setwd("D:/data/中行个人征信/中行个人征信共享")
+allS <- as.matrix(read.csv("所有打分矩阵.csv"))
+onelist <- list()
+
+#for(i in 3:10){
+i=127
+        print(i)
+        plot(as.numeric(allS[i,4:52]),col=1,type="b",main=paste(allS[i,1],allS[i,2],sep="_"))
+        abline(v=21.5,lwd=2,col=2)
+        
+        onelist[[1]] <- as.numeric(allS[i,4:24])
+        onelist[[2]] <- as.numeric(allS[i,25:52])
+        boxplot(onelist)
+        
+        boxplot.stats(onelist[[1]])
+#}
+
+        
+#合并坏样本按顺序===================
+        
+        library(xlsx)
+        setwd("D:/data/中行个人征信/中行个人征信共享")
+        goodbad <- read.csv("goodbad.csv")
+        goddbad <- goodbad[as.numeric(goodbad[,"累计逾期次数"]) > 0 ,]
+        goodbad <- goodbad[order(-goodbad[,"累计逾期次数"]), ]
+        goodbad <- goodbad[!duplicated(goodbad[,1]), ]
+        
+        samples <- read.xlsx2("数据样本0727-黄强.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+        
+        inSams <- intersect(samples[,1],goodbad[,1])
+        inSams <- goodbad[goodbad[,1] %in% inSams,1]
+        subs <- 1:nrow(samples)
+        sub1 <- match(inSams,samples[,1])
+        sub2 <- setdiff(subs,sub1)
+        samples <- samples[c(sub1,sub2), ]
+        write.table(samples,file="数据样本0727-黄强3.txt",quote=FALSE,sep="\t",row.names = FALSE)

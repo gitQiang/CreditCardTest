@@ -7,11 +7,12 @@ test <- function(){
         gc()
         library(xlsx)
         setwd("D:/data/中行个人征信/中行个人征信共享")
-        source('D:/code/CreditCardTest/Credit_v0.R')
-        samples <- read.xlsx2("数据样本0727-黄强.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
-        samples <- samples[,1:60]
-        
+        source('D:/code/CreditCardTest/Credit_v0_1.R')
+        samples <- read.xlsx2("数据样本0727-黄强4.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+        samples <- samples[ ,1:60]
         n.sam <- nrow(samples)
+        n.good <- 24
+        
         samsN <- unlist(samples[,1])
         outputN <- unlist(read.csv("所有输出字段表.csv",header = F)[,1])
         rawfieN <- unlist(read.csv("所有原始字段表.csv",header = F)[,1])
@@ -39,7 +40,7 @@ test <- function(){
         for(i in 1:nrow(samples)){
                 print(i)
                 fields0 <- samples[i,]
-                tmp  <- Credit_v0(fields0)
+                tmp  <- Credit_v0_1(fields0)
                 aa[,i] <- unlist(tmp$result[c(1:3,aasubs+3,163:169)])
                 
                 bb[,i] <- unlist(c(fields0[1:3], tmp$fields0))
@@ -49,35 +50,50 @@ test <- function(){
                 tmp0[i] <- tmp$result[168]
         }
         ee <- cbind(treeNodes,ee)
-        write.csv(aa,file="样本输出矩阵.csv",quote=FALSE)
-        write.table(bb,file="原始指标矩阵.xls",quote=FALSE,sep="\t")
-        write.table(t(bb),file="原始指标矩阵转置.xls",quote=FALSE,sep="\t")
-        write.csv(cc,file="衍生指标矩阵.csv",quote=FALSE)
-        write.csv(dd,file="衍生打分矩阵.csv",quote=FALSE)
-        write.csv(ee,file="所有打分矩阵.csv",quote=FALSE)
+        write.csv(aa,file="样本输出矩阵_1.csv",quote=FALSE)
+        write.table(bb,file="原始指标矩阵_1.xls",quote=FALSE,sep="\t")
+        write.table(t(bb),file="原始指标矩阵转置_1.xls",quote=FALSE,sep="\t")
+        write.csv(cc,file="衍生指标矩阵_1.csv",quote=FALSE)
+        write.csv(dd,file="衍生打分矩阵_1.csv",quote=FALSE)
+        write.csv(ee,file="所有打分矩阵_1.csv",quote=FALSE)
         
         plot(1:length(tmp0), as.numeric(tmp0),type="b")
-        abline(v=21.5,col=2,lwd=2)
+        abline(v=n.good+0.5,col=2,lwd=2)
         
-        sample1 <- as.numeric(aa[27,1:21])
-        sample2 <- as.numeric(aa[27,22:n.sam])
-        # create ECDF of data
-        cdf1 <- ecdf(sample1)
-        cdf2 <- ecdf(sample2)
-        x0 <- seq(0,1,0.0001)
-        y1 <- cdf1(x0)
-        y2 <- cdf2(x0)
-        xv <- which.max(abs(y2-y1))
-
-        plot(cdf1, verticals=TRUE, do.points=FALSE, col=1,lwd=2)
-        plot(cdf2, verticals=TRUE, do.points=FALSE, col=2, add=TRUE,lwd=2)
-        abline(v=x0[xv],col="blue",lwd=2)
-        legend("topleft",legend=c("坏样本","好样本"),col=1:2,lwd=2)
-        max(abs(y1-y2))
-
+        mains <- outputN[-c(1:3)]#c("近期","远期","航空","综合")
+        k <- 1
+        for(n in 4:27){
+                KS_curves(aa[n,(n.good+1):n.sam],aa[n,1:n.good],main=mains[k])
+                k <- k+1
+        }
+        
 }
 
-Credit_v0 <- function(fields0){
+KS_curves <- function(goodV,badV,main){
+        sample1 <- as.numeric(badV)
+        sample1 <- sample1[!is.na(sample1)]
+        sample2 <- as.numeric(goodV)
+        sample2 <- sample2[!is.na(sample2)]
+        
+        x0 <- seq(1,0,-0.0001)
+        y1 <- sapply(x0,function(x01) sum(sample1 >= x01))
+        y1 <- y1/length(sample1)
+        y2 <- sapply(x0,function(x01) sum(sample2 >= x01))
+        y2 <- y2/length(sample2)
+        xv <- which.max(y2-y1)
+        print(max(y2-y1))
+        
+        plot(1:length(x0),y1,  col=1,lwd=1,xaxt="n",type="l",xlab="Score",ylab="Fn(x)",main=main,ylim=c(0,1))
+        lines(1:length(x0),y2, col=2,lwd=1,type="l")
+        abline(v=xv,col="blue",lwd=2)
+        legend("bottomright",legend=c("坏样本","好样本"),col=1:2,lwd=2)
+        text(xv,y=0.5,round(max(y2-y1),4))
+        axis(1,at=seq(1,length(x0),length.out=10),labels=round(seq(1,0,length.out = 10),2))
+  
+}
+
+
+Credit_v0_1 <- function(fields0){
         ## 输入原始字段：fields0; 原始字段顺序见文件：Dictionary_HQ_raw_v0.csv
         ## 输出打分格式： 姓名 身份证号 手机号 金融画像打分近期6个数字（五个部分和一个综合打分） 金融画像打分远期6个数字（五个部分和一个综合打分） 飞行画像打分6个数（5部分和一个综合打分） 金融远期和飞行打分综合6个数 （五个部分和一个综合打分）
         
@@ -92,7 +108,7 @@ Credit_v0 <- function(fields0){
         siFainfo <- read.csv("个人司法查询.csv")
         siFaNUM <- siFainfo[,2]
         for(i in 1:nrow(siFainfo)) siFaNUM[i] <- substr(siFainfo[i,2],1,14)
-        XinYongCut <- 0.3
+        XinYongCut <- 0.05
         fields0 <- fields0[-(1:3)]
         
         ## only for test
@@ -138,7 +154,7 @@ Credit_v0 <- function(fields0){
                 trans <-  transform_fileds(fields0,shenfenzhengNUM)
                 fields1 <- trans$fields1
                 nleaf <- trans$nleaf
-                nspe <- trans$nspe
+                nspe <- c(33,67,trans$nspe)
                 
                 ## step 2: 提取每个衍生字段的具体打分； 函数：fields_scores； 衍生字段具体打分表见文件：
                 scores1 <- fields_scores(fields1,nleaf)
@@ -157,9 +173,9 @@ Credit_v0 <- function(fields0){
                 result1 <- unlist(c(personOne,scores))
                 
                 #!!!!! 24 sub only for test
-                if(as.numeric(result1[165]) < XinYongCut){ 
+                if(is.na(as.numeric(result1[165])) | (as.numeric(result1[165]) < XinYongCut)){
                         ## 信用历史
-                        result <- c(result1,"信用历史") #！！！！！
+                        result <- c(result1[1:3],rep(0,165),"信用历史") #c(result1,"信用历史") #！！！！！
                 }else{
                         result <- c(result1,0)         
                 }
@@ -277,34 +293,38 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         n <- 0
         n2 <- 74
         nleaf[2] <- n2
-
-        fields1[n2+19] <- flight(fieldsHangkong[n+9])
-        fields1[n2+20] <- idcard_age(shenfenzhengNUM)
-        fields1[n2+21] <- city(idcard(shenfenzhengNUM))
-        fields1[n2+23] <- lastflight(fieldsHangkong[n+18])
-        fields1[n2+c(1:5,24:26)] <- Hangkong_y1_5(fieldsHangkong[n+7], fieldsHangkong[n+8],shenfenzhengNUM) 
         nspe <- n2 + c(1,19,21)
         
-        fields1[n2+6] <- as.numeric(fieldsHangkong[n+10])
-        fields1[n2+7] <- as.numeric(fieldsHangkong[n+11])
-        fields1[n2+8] <- as.numeric(fieldsHangkong[n+10])/as.numeric(fieldsHangkong[n+11])
-        fields1[n2+9] <- as.numeric(fieldsHangkong[n+1])
-        fields1[n2+10] <- as.numeric(fieldsHangkong[n+15])
-        fields1[n2+11] <- as.numeric(fieldsHangkong[n+15])/as.numeric(fieldsHangkong[n+1])
-        fields1[n2+12] <- as.numeric(fieldsHangkong[n+13])*as.numeric(fieldsHangkong[n+1])
-        fields1[n2+13] <- as.numeric(fieldsHangkong[n+13])
-        fields1[n2+14] <- as.numeric(fields1[n2+12])/as.numeric(fields1[n2+10])
-        fields1[n2+15] <- as.numeric(fieldsHangkong[n+4])
-        fields1[n2+16] <- as.numeric(fieldsHangkong[n+4]) + as.numeric(fieldsHangkong[n+5])
-        fields1[n2+17] <- as.numeric(fieldsHangkong[n+4])/as.numeric(fieldsHangkong[n+1])
-        fields1[n2+18] <- as.numeric(fields1[n2+16])/as.numeric(fieldsHangkong[n+1])
-        fields1[n2+22] <- as.numeric(fieldsHangkong[n+2])/as.numeric(fieldsHangkong[n+1])
-
+        if(is.na(fieldsHangkong[n+1]) | fieldsHangkong[n+1]==""){
+                fields1[n2+(1:26)] <- NA
+        }else{
+                fields1[n2+19] <- flight(fieldsHangkong[n+9])
+                fields1[n2+20] <- idcard_age(shenfenzhengNUM)
+                fields1[n2+21] <- city(idcard(shenfenzhengNUM))
+                fields1[n2+23] <- lastflight(fieldsHangkong[n+18])
+                fields1[n2+c(1:5,24:26)] <- Hangkong_y1_5(fieldsHangkong[n+7], fieldsHangkong[n+8],shenfenzhengNUM) 
+                #nspe <- n2 + c(1,19,21)
+                
+                fields1[n2+6] <- as.numeric(fieldsHangkong[n+10])
+                fields1[n2+7] <- as.numeric(fieldsHangkong[n+11])
+                fields1[n2+8] <- as.numeric(fieldsHangkong[n+10])/as.numeric(fieldsHangkong[n+11])
+                fields1[n2+9] <- as.numeric(fieldsHangkong[n+1])
+                fields1[n2+10] <- as.numeric(fieldsHangkong[n+15])
+                fields1[n2+11] <- as.numeric(fieldsHangkong[n+15])/as.numeric(fieldsHangkong[n+1])
+                fields1[n2+12] <- as.numeric(fieldsHangkong[n+13])*as.numeric(fieldsHangkong[n+1])
+                fields1[n2+13] <- as.numeric(fieldsHangkong[n+13])
+                fields1[n2+14] <- as.numeric(fields1[n2+12])/as.numeric(fields1[n2+10])
+                fields1[n2+15] <- as.numeric(fieldsHangkong[n+4])
+                fields1[n2+16] <- as.numeric(fieldsHangkong[n+4]) + as.numeric(fieldsHangkong[n+5])
+                fields1[n2+17] <- as.numeric(fieldsHangkong[n+4])/as.numeric(fieldsHangkong[n+1])
+                fields1[n2+18] <- as.numeric(fields1[n2+16])/as.numeric(fieldsHangkong[n+1])
+                fields1[n2+22] <- as.numeric(fieldsHangkong[n+2])/as.numeric(fieldsHangkong[n+1])
+                
+                tmp <- fields1[(n2+1):(n2+26)]
+                tmp[tmp==Inf] <- 9999999999
+                fields1[(n2+1):(n2+26)] <- tmp
+        }
         nleaf[3] <- length(fields1)
-        
-        tmp <- fields1[(n2+1):nleaf[3]]
-        tmp[tmp==Inf] <- 9999999999
-        fields1[(n2+1):nleaf[3]] <- tmp
         
         list(fields1=fields1,nleaf=nleaf,nspe=nspe)
 }
@@ -611,15 +631,15 @@ trees_construct <- function(){
                              5,5,5,5,3,8,3,7,3,3,
                              2,3,7,4,2,4,3,5,7,3,
                              4,6,4,2,6,4,6,4,1,5,
-                             5,1,5,5,10,4,8,2,2,6,
-                             3,3,2,2,2,6,4,1,100,100))
+                             5,1,5,5,3,4,8,2,2,6,
+                             3,3,2,2,2,6,4,1,5,5))
         
         tree2$Set(weight = c(10,2,5,5,5,5,5,5,5,5,
                              5,5,3,8,3,7,7,3,3,7,
                              3,3,7,7,3,3,7,3,4,6,
                              3,7,4,3,7,2,1,5,5,1,
-                             5,5,10,4,2,2,3,3,6,5,
-                             100,100))
+                             5,5,3,4,2,2,3,3,6,5,
+                             5,5))
         
         tree3$Set(weight = c(1,5,5,6,4,4,1,1,4,1,
                              1,1,4,2,2,2,1,2,1,1,
@@ -650,7 +670,9 @@ credit_scores <- function(trees1,scores1,nleaf){
         tree3$Do(function(node) node$value <- Valuef(node)[1], filterFun = isNotLeaf)
         result3 <- Get(list(tree3$Shehuiguanxi1,tree3$Shenfentezhi3,tree3$Xinyonglishi4,tree3$Xingweipianhao2,tree3$Lvyuenengli5,tree3),attribute = "value")
 
-        result4 <- sapply(1:length(result2), function(i) weighted.mean(c(result1[i], result3[i]), w=c(3,1), na.rm = TRUE))
+        result4 <- sapply(1:length(result1), function(i) weighted.mean(c(result1[i], result3[i]), w=c(3,1), na.rm = TRUE))
+        #result4 <- result2 #sapply(1:length(result2), function(i) weighted.mean(c(result2[i], result1[i], result3[i]), w=c(300000,0.000001,0.000001), na.rm = TRUE))
+        #print(result2[6])
 
         result2[2] <- result1[2] ##!!!!!
         result <- c(result2,result1,result3,result4)
