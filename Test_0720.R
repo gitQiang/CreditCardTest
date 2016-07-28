@@ -154,6 +154,7 @@ i=127
 #}
 
         
+        
 #合并坏样本按顺序===================
         
         library(xlsx)
@@ -172,3 +173,51 @@ i=127
         sub2 <- setdiff(subs,sub1)
         samples <- samples[c(sub1,sub2), ]
         write.table(samples,file="数据样本0727-黄强3.txt",quote=FALSE,sep="\t",row.names = FALSE)
+
+        
+        
+### 民生剩余样本==========================        
+        minsheng <- read.csv("民生坏样本.csv")
+        
+        samples <- read.xlsx2("数据样本0727-黄强4.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+        samples <- samples[ ,1:60]
+        goodbad <- read.csv("goodbad.csv")
+        
+        dianxinhaoduan <- c("189","181","180","177","153","133","1700")
+        
+        shenfenNUM14 <- sapply(1:nrow(minsheng), function(i) substr(minsheng[i,3],1,14))
+        goodbadshenfenNUM14 <- sapply(1:nrow(goodbad), function(i) substr(goodbad[i,2],1,14))
+        samshenfenNUM14 <- sapply(1:nrow(samples), function(i) substr(samples[i,2],1,14))
+        
+        minsheng <- minsheng[!(shenfenNUM14 %in% c(samshenfenNUM14,goodbadshenfenNUM14)), ]
+        minsheng <- minsheng[!duplicated(minsheng[,3]), ]
+        
+        write.table(minsheng,file="民生样本592.txt",row.names = FALSE,quote=FALSE,sep="\t")
+        
+        write.table(minsheng[,c(1,3,68)],file="民生样本592_3col.txt",row.names = FALSE,quote=FALSE,sep="\t")
+        
+### 遍历三方面权重比例====================================
+        
+        rm(list=ls())
+        gc()
+        source('D:/code/CreditCardTest/Credit_v0_1.R')
+        load("bb")
+        aa = bb
+        mode(aa) <- "numeric"
+        n.sam=51
+        n.bad=24
+        
+        KSM <- array(0,dim=c(50,50,50))
+        for(w1 in 1:50){
+                for(w3 in 1:50){
+                        for(w2 in 1:50){
+                                oneV <- sapply(1:ncol(aa), function(i) weighted.mean(c(aa[1,i],aa[2,i],aa[3,i]),w=c(w1,w2,w3),na.rm=TRUE) )
+                                if(w2>=w1 & w2 >=w3) KSM[w1,w2,w3] <- KS_curves(oneV[(n.bad+1):n.sam],oneV[1:n.bad])
+                                
+                        }
+                }
+                print(w1)
+        }
+        
+        which(KSM==max(KSM),arr.ind = TRUE)
+        max(KSM)

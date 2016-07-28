@@ -59,7 +59,7 @@ test <- function(){
         
         plot(1:length(tmp0), as.numeric(tmp0),type="b")
         abline(v=n.bad+0.5,col=2,lwd=2)
-        
+        # 
         bb <- aa[c(9,15,21), ]
         save(bb,file="bb")
         
@@ -69,6 +69,16 @@ test <- function(){
                 KS_curves(aa[n,(n.bad+1):n.sam],aa[n,1:n.bad],main=mains[k],plot=TRUE)
                 k <- k+1
         }
+        
+        X <- as.matrix(t(bb))
+        mode(X) <- "numeric"
+        colnames(X) <- c("X1","X2","X3")
+        Y <- c(rep(0,n.bad),rep(1,n.sam-n.bad))
+        data <- list()
+        data$X <- X
+        data$Y <- Y
+        fitlm <- lm(Y~.,data=data.frame(data))
+        fitglm <- glm(Y~.,data=data.frame(data),family = binomial())
         
 }
 
@@ -115,7 +125,7 @@ Credit_v0_1 <- function(fields0){
         siFainfo <- read.csv("个人司法查询.csv")
         siFaNUM <- siFainfo[,2]
         for(i in 1:nrow(siFainfo)) siFaNUM[i] <- substr(siFainfo[i,2],1,14)
-        XinYongCut <- 0.05
+        XinYongCut <- 0
         fields0 <- fields0[-(1:3)]
         
         ## only for test
@@ -161,7 +171,7 @@ Credit_v0_1 <- function(fields0){
                 trans <-  transform_fileds(fields0,shenfenzhengNUM)
                 fields1 <- trans$fields1
                 nleaf <- trans$nleaf
-                nspe <- c(33,67,trans$nspe)
+                nspe <- trans$nspe
                 
                 ## step 2: 提取每个衍生字段的具体打分； 函数：fields_scores； 衍生字段具体打分表见文件：
                 scores1 <- fields_scores(fields1,nleaf)
@@ -180,7 +190,7 @@ Credit_v0_1 <- function(fields0){
                 result1 <- unlist(c(personOne,scores))
                 
                 #!!!!! 24 sub only for test
-                if(is.na(as.numeric(result1[165])) | as.numeric(result1[165]) < XinYongCut){
+                if(is.na(as.numeric(result1[165])) | as.numeric(result1[165]) <= XinYongCut){
                         ## 信用历史
                         result <- c(result1,"信用历史") #！！！！！
                         result[c(71,1,123,165)+3] <- 0
@@ -207,13 +217,13 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         fields1[n+1] <- fields0[n+9]/fields0[n+8]
         fields1[n+2] <- fields0[n+2]
         fields1[n+3] <- fields0[n+10]
-        fields1[n+4] <- 0
+        fields1[n+4] <- NA
         fields1[n+5] <- fields0[n+35]
         fields1[n+6] <- fields0[n+17]
         fields1[n+7] <- fields0[n+16]
         fields1[n+8] <- fields0[n+2]/fields0[n+35]
         fields1[n+9] <- fields0[n+10]/fields0[n+17]
-        fields1[n+10] <- 0
+        fields1[n+10] <- NA
         fields1[n+11] <- fields0[n+4]/fields0[n+10]
         fields1[n+12] <- fields0[n+15]/fields0[n+17]
         fields1[n+13] <- fields0[n+3]
@@ -268,7 +278,7 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         fields1[n1+1] <- fields0[n+24]/fields0[n+23]
         fields1[n1+2] <- fields0[n+24]/fields0[n+9]
         fields1[n1+3] <- fields0[n+25]/fields0[n+17]
-        fields1[n1+4] <- 0
+        fields1[n1+4] <- NA
         fields1[n1+5] <- fields0[n+19]/fields0[n+25]
         fields1[n1+6] <- fields0[n+30]/fields0[n+17]
         fields1[n1+7] <- fields0[n+23]
@@ -286,7 +296,7 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         fields1[n1+19] <- fields0[n+37]
         fields1[n1+20] <- fields0[n+38] # zaixianshichang
         fields1[n1+21] <- fields0[n+39] # shoujixiaofei 
-        fields1[n1+22] <- 0 # gaoguanrenzhi
+        fields1[n1+22] <- NA # gaoguanrenzhi
         fields1[n1+23] <- city(idcard(shenfenzhengNUM)) # juzhudi
         fields1[n1+24] <- fields0[n+32]
         fields1[n1+25] <- fields0[n+31]
@@ -332,7 +342,12 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
                 tmp[tmp==Inf] <- 9999999999
                 fields1[(n2+1):(n2+26)] <- tmp
         }
+        
+        
         nleaf[3] <- length(fields1)
+        
+        ## add special index for Jinrong Chang and Duan
+        nspe <- c(33,67,nspe)
         
         list(fields1=fields1,nleaf=nleaf,nspe=nspe)
 }
@@ -509,9 +524,9 @@ trees_construct <- function(){
         Shouruzhichubi12_tree1 <- Bilv_tree1$AddChild("Shouruzhichubi12")
         XiaofeiZhichubi12_tree1 <- Bilv_tree1$AddChild("XiaofeiZhichubi12")
         Zichanfuzhai_tree1 <-  Lvyuenengli_tree1$AddChild("Zichanfuzhai")        
-        Zichanjine_tree1 <- Zichanfuzhai_tree1$AddChild("Zichanjine")
-        Jiejikayue_tree1 <- Zichanjine_tree1$AddChild("Zichanjine")
-        Zongruzhangjine12_tree1 <- Zichanjine_tree1$AddChild("Zongruzhangjine12")
+                Zichanjine_tree1 <- Zichanfuzhai_tree1$AddChild("Zichanjine")
+                        Jiejikayue_tree1 <- Zichanjine_tree1$AddChild("Jiejikayue")
+                        Zongruzhangjine12_tree1 <- Zichanjine_tree1$AddChild("Zongruzhangjine12")
         Gerentouzi12_tree1 <- Zichanfuzhai_tree1$AddChild("Gerentouzi12")
         Shehuiguanxi_tree1 <- tree1$AddChild("Shehuiguanxi")
         Zaixianshichang_tree1 <- Shehuiguanxi_tree1$AddChild("Zaixianshichang")
@@ -679,7 +694,7 @@ credit_scores <- function(trees1,scores1,nleaf){
         result3 <- Get(list(tree3$Shehuiguanxi1,tree3$Shenfentezhi3,tree3$Xinyonglishi4,tree3$Xingweipianhao2,tree3$Lvyuenengli5,tree3),attribute = "value")
 
         #result4 <- sapply(1:length(result1), function(i) weighted.mean(c(result1[i], result3[i]), w=c(3,1), na.rm = TRUE))
-        result4 <- sapply(1:length(result2), function(i) weighted.mean(c(result2[i], result1[i], result3[i]), w=c(1,15,13), na.rm = TRUE))
+        result4 <- sapply(1:length(result2), function(i) weighted.mean(c(result2[i], result1[i], result3[i]), w=c(3,4,1), na.rm = TRUE))
         
         result2[2] <- result1[2] ##!!!!!
         result <- c(result2,result1,result3,result4)
