@@ -8,11 +8,49 @@ test <- function(){
         library(xlsx)
         setwd("D:/data/中行个人征信/中行个人征信共享")
         source('D:/code/CreditCardTest/Credit_v0_1.R')
+        
+        ## 划分好坏样本
+        samlab <- read.csv("goodbad2.csv")
+        samlab[,5] <- samlab[,6]
+        
+        samlab <- samlab[order(-samlab[,5]), ]
+        shenfenNUM14 <- sapply(1:nrow(samlab), function(i) substr(samlab[i,3],1,14))
+        samlab[,1] <- paste(samlab[,2], shenfenNUM14,sep="_")
+        samlab <- samlab[!duplicated(samlab),  ]
+        
+        badCut <- 0
+        labels <- rep(0,nrow(samlab))
+        labels[samlab[,5] > badCut] <- 1
+        samlab <- cbind(samlab,labels)
+        
+        
+        ### 读取所有可以的样本
         samples <- read.xlsx2("数据样本0727-黄强4.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
         samples <- samples[ ,1:60]
-        n.sam <- nrow(samples)
-        n.bad <- 24
+        sam0729Yi <- read.csv("数据样本0729 - 全.csv")
+        sam0729Lian <- read.xlsx2("数据样本0729 - 联通全.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+        sam0729Lian[sam0729Lian=="ERROR"] <- NA
+        samples <- rbind(samples,sam0729Yi,sam0729Lian)
+        samtmp <- name_ID(samples[,1],samples[,2])
         
+        
+        ff <- 2
+        if(ff==1){
+                siFanames <- read.delim("涉及司法信息-0729.txt",sep='\t',header = TRUE)
+                tmp <- name_ID(siFanames[,1],siFanames[,2])
+                samples <- samples[!(samtmp %in% tmp), ]
+        }
+        samtmp <- name_ID(samples[,1],samples[,2])
+        
+        ## 按照坏样本和好样本排序
+        interSam <- intersect(samtmp,samlab[,1])
+        interSam <- samlab[samlab[,1] %in% interSam,1]
+        samples <- samples[match(interSam,samtmp), ]
+        n.bad <- sum(samlab[samlab[,1] %in% interSam,5] > badCut)
+        n.sam <- nrow(samples)
+        
+        
+        ### 运行所有样本的打分
         samsN <- unlist(samples[,1])
         outputN <- unlist(read.csv("所有输出字段表.csv",header = F)[,1])
         rawfieN <- unlist(read.csv("所有原始字段表.csv",header = F)[,1])
@@ -50,12 +88,12 @@ test <- function(){
                 tmp0[i] <- tmp$result[168]
         }
         ee <- cbind(treeNodes,ee)
-        write.csv(aa,file="样本输出矩阵_1.csv",quote=FALSE)
-        write.table(bb,file="原始指标矩阵_1.xls",quote=FALSE,sep="\t")
-        write.table(t(bb),file="原始指标矩阵转置_1.xls",quote=FALSE,sep="\t")
-        write.csv(cc,file="衍生指标矩阵_1.csv",quote=FALSE)
-        write.csv(dd,file="衍生打分矩阵_1.csv",quote=FALSE)
-        write.csv(ee,file="所有打分矩阵_1.csv",quote=FALSE)
+        write.csv(aa,file="样本输出矩阵_2.csv",quote=FALSE)
+        write.table(bb,file="原始指标矩阵_2.xls",quote=FALSE,sep="\t")
+        write.table(t(bb),file="原始指标矩阵转置_2.xls",quote=FALSE,sep="\t")
+        write.csv(cc,file="衍生指标矩阵_2.csv",quote=FALSE)
+        write.csv(dd,file="衍生打分矩阵_2.csv",quote=FALSE)
+        write.csv(ee,file="所有打分矩阵_2.csv",quote=FALSE)
         
         plot(1:length(tmp0), as.numeric(tmp0),type="b")
         abline(v=n.bad+0.5,col=2,lwd=2)
@@ -70,11 +108,8 @@ test <- function(){
                 k <- k+1
         }
         
-        load("bb")
-        n.bad=24
-        n.sam=51
-        
-        X <- as.matrix(t(bb))
+        load("bb_onetrain")
+        X <- as.matrix(t(aa))
         mode(X) <- "numeric"
         colnames(X) <- c("X1","X2","X3")
         Y <- c(rep(0,n.bad),rep(1,n.sam-n.bad))
@@ -83,16 +118,20 @@ test <- function(){
         data$Y <- Y
         fitlm <- lm(Y~.,data=data.frame(data))
         fitglm <- glm(Y~.,data=data.frame(data),family = binomial())
-        
-        
-        fitglm1 <- glm.fit(X,Y,intercept = TRUE,family = binomial(), na.action = 'na.omit')
-        
+
+
+        #fitglm1 <- glm.fit(X,Y,intercept = TRUE,family = binomial(), na.action = 'na.omit')
+
         aafit <- fitted(fitglm)
         KS_curves(aafit[(n.bad+1):n.sam],aafit[1:n.bad],plot=TRUE)
+
+        #aafit <- fitted(fitglm1)
+        #KS_curves(aafit[(n.bad+1):n.sam],aafit[1:n.bad],plot=TRUE)
         
-        aafit <- fitted(fitglm1)
-        KS_curves(aafit[(n.bad+1):n.sam],aafit[1:n.bad],plot=TRUE)
-        
+}
+
+name_ID <- function(name,id){
+        sapply(1:length(name), function(i) paste(name[i], substr(id[i],1,14),sep="_") )
 }
 
 KS_curves <- function(goodV,badV,main="",plot=FALSE){
@@ -123,6 +162,8 @@ KS_curves <- function(goodV,badV,main="",plot=FALSE){
 }
 
 
+
+
 Credit_v0_1 <- function(fields0){
         ## 输入原始字段：fields0; 原始字段顺序见文件：Dictionary_HQ_raw_v0.csv
         ## 输出打分格式： 姓名 身份证号 手机号 金融画像打分近期6个数字（五个部分和一个综合打分） 金融画像打分远期6个数字（五个部分和一个综合打分） 飞行画像打分6个数（5部分和一个综合打分） 金融远期和飞行打分综合6个数 （五个部分和一个综合打分）
@@ -140,6 +181,7 @@ Credit_v0_1 <- function(fields0){
         for(i in 1:nrow(siFainfo)) siFaNUM[i] <- substr(siFainfo[i,2],1,14)
         XinYongCut <- 0
         fields0 <- fields0[-(1:3)]
+        fields0[grepl("N/A",fields0)] <- NA
         
         ## only for test
         fields1=rep(0,100)
@@ -709,10 +751,10 @@ credit_scores <- function(trees1,scores1,nleaf){
         #result4 <- sapply(1:length(result1), function(i) weighted.mean(c(result1[i], result3[i]), w=c(3,1), na.rm = TRUE))
         result4 <- sapply(1:length(result2), function(i) weighted.mean(c(result2[i], result1[i], result3[i]), w=c(3,4,1), na.rm = TRUE))
         
-        i=6
-        result4[i] <-  weighted.mean(c(result2[i], result1[i], result3[i]), w=c(7.713098, -4.913049, 5.940099))
-        result4[i] <- result4[i] - 4.105965
-        result4[i] <- 1/(exp(-result4[i])+1)
+        # i=6
+        # result4[i] <-  weighted.mean(c(result2[i], result1[i], result3[i]), w=c(7.713098, -4.913049, 5.940099))
+        # result4[i] <- result4[i] - 4.105965
+        # result4[i] <- 1/(exp(-result4[i])+1)
         
         result2[2] <- result1[2] ##!!!!!
         result <- c(result2,result1,result3,result4)
@@ -778,10 +820,14 @@ idcard<-function(s){
 }
 
 lastflight<-function(s){
-        if(!( any(grepl("-",s)) | any(grepl("/",s)) ) ) s <- paste(substr(s,1,4),substr(s,5,6),substr(s,7,8),sep="-")
-        s<-as.Date(s,'%Y%m%d')
-        gap<-difftime(Sys.Date(),s,units='days')
-        return(gap)
+        if( is.na(as.numeric(s)) ){
+                NA
+        }else{
+                if(!( any(grepl("-",s)) | any(grepl("/",s)) ) ) s <- paste(substr(s,1,4),substr(s,5,6),substr(s,7,8),sep="-")
+                s<-as.Date(s,'%Y%m%d')
+                gap<-difftime(Sys.Date(),s,units='days')
+                gap
+        }
 }
 
 Hangkong_y1_5<-function(a,b,a0){
