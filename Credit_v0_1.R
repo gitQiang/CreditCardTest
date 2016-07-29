@@ -11,12 +11,12 @@ test <- function(){
         
         ## 划分好坏样本
         samlab <- read.csv("goodbad2.csv")
-        samlab[,5] <- samlab[,6]
+        #samlab[,5] <- samlab[,6]
         
         samlab <- samlab[order(-samlab[,5]), ]
         shenfenNUM14 <- sapply(1:nrow(samlab), function(i) substr(samlab[i,3],1,14))
         samlab[,1] <- paste(samlab[,2], shenfenNUM14,sep="_")
-        samlab <- samlab[!duplicated(samlab),  ]
+        samlab <- samlab[!duplicated(samlab[,1]),  ]
         
         badCut <- 0
         labels <- rep(0,nrow(samlab))
@@ -27,14 +27,15 @@ test <- function(){
         ### 读取所有可以的样本
         samples <- read.xlsx2("数据样本0727-黄强4.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
         samples <- samples[ ,1:60]
-        sam0729Yi <- read.csv("数据样本0729 - 全.csv")
+        sam0729Yi <- read.xlsx2("数据样本0729 - 移动全.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+        sam0729Yi[sam0729Yi=="ERROR"] <- NA
         sam0729Lian <- read.xlsx2("数据样本0729 - 联通全.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
         sam0729Lian[sam0729Lian=="ERROR"] <- NA
         samples <- rbind(samples,sam0729Yi,sam0729Lian)
         samtmp <- name_ID(samples[,1],samples[,2])
         
         
-        ff <- 2
+        ff <- 1
         if(ff==1){
                 siFanames <- read.delim("涉及司法信息-0729.txt",sep='\t',header = TRUE)
                 tmp <- name_ID(siFanames[,1],siFanames[,2])
@@ -108,8 +109,11 @@ test <- function(){
                 k <- k+1
         }
         
-        load("bb_onetrain")
-        X <- as.matrix(t(aa))
+        
+        
+        
+        load("bb")
+        X <- as.matrix(t(bb))
         mode(X) <- "numeric"
         colnames(X) <- c("X1","X2","X3")
         Y <- c(rep(0,n.bad),rep(1,n.sam-n.bad))
