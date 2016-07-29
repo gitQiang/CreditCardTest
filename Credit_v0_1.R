@@ -70,6 +70,10 @@ test <- function(){
                 k <- k+1
         }
         
+        load("bb")
+        n.bad=24
+        n.sam=51
+        
         X <- as.matrix(t(bb))
         mode(X) <- "numeric"
         colnames(X) <- c("X1","X2","X3")
@@ -79,6 +83,15 @@ test <- function(){
         data$Y <- Y
         fitlm <- lm(Y~.,data=data.frame(data))
         fitglm <- glm(Y~.,data=data.frame(data),family = binomial())
+        
+        
+        fitglm1 <- glm.fit(X,Y,intercept = TRUE,family = binomial(), na.action = 'na.omit')
+        
+        aafit <- fitted(fitglm)
+        KS_curves(aafit[(n.bad+1):n.sam],aafit[1:n.bad],plot=TRUE)
+        
+        aafit <- fitted(fitglm1)
+        KS_curves(aafit[(n.bad+1):n.sam],aafit[1:n.bad],plot=TRUE)
         
 }
 
@@ -696,6 +709,11 @@ credit_scores <- function(trees1,scores1,nleaf){
         #result4 <- sapply(1:length(result1), function(i) weighted.mean(c(result1[i], result3[i]), w=c(3,1), na.rm = TRUE))
         result4 <- sapply(1:length(result2), function(i) weighted.mean(c(result2[i], result1[i], result3[i]), w=c(3,4,1), na.rm = TRUE))
         
+        i=6
+        result4[i] <-  weighted.mean(c(result2[i], result1[i], result3[i]), w=c(7.713098, -4.913049, 5.940099))
+        result4[i] <- result4[i] - 4.105965
+        result4[i] <- 1/(exp(-result4[i])+1)
+        
         result2[2] <- result1[2] ##!!!!!
         result <- c(result2,result1,result3,result4)
         
@@ -734,7 +752,8 @@ flight<-function(s){
 }
 
 idcard_age<-function(s){
-        birthday<-substr(s,7,10)# 身份证出生日期
+        if(nchar(s) > 15) birthday <- substr(s,7,10)# 身份证出生日期
+        if( nchar(s) == 15 ) birthday <- as.numeric(substr(s,7,8)) + 1900 # 身份证出生日期
         age<-as.numeric(format(Sys.Date(),format='%Y'))-as.numeric(birthday)
         
         return(age)
