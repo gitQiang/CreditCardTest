@@ -10,8 +10,9 @@ test <- function(){
         source('D:/code/CreditCardTest/Credit_v0_1.R')
         
         ## 划分好坏样本
-        samlab <- read.csv("goodbad2.csv")
-        #samlab[,5] <- samlab[,6]
+        #samlab <- read.csv("goodbad3.csv")
+        samlab <- read.delim("goodbad3.txt",sep="\t",header = FALSE)
+        samlab[,5] <- samlab[,7]
         
         samlab <- samlab[order(-samlab[,5]), ]
         shenfenNUM14 <- sapply(1:nrow(samlab), function(i) substr(samlab[i,3],1,14))
@@ -98,10 +99,41 @@ test <- function(){
         
         plot(1:length(tmp0), as.numeric(tmp0),type="b")
         abline(v=n.bad+0.5,col=2,lwd=2)
-        # 
-        bb <- aa[c(9,15,21), ]
-        save(bb,file="bb")
         
+
+        # ### 进一步： 遍历最优权重比例， 然后重新运行， 计算KS值
+        # bb <- aa[c(9,15,21), ]
+        # mode(bb) <- "numeric"
+        # 
+        # ksV <- 1:10
+        # KSM <- array(0,dim=c(10,10,10))
+        # for(w1 in 1:10){
+        #         for(w3 in 1:10){
+        #                 for(w2 in 1:10){
+        #                         oneV <- sapply(1:ncol(bb), function(i) weighted.mean(c(bb[1,i],bb[2,i],bb[3,i]),w=c(w1,w2,w3),na.rm=TRUE) )
+        #                         KSM[w1,w2,w3] <- KS_curves(oneV[(n.bad+1):n.sam],oneV[1:n.bad])
+        #                 }
+        #         }
+        #         print(w1)
+        # }
+        # 
+        # kssub <- which(KSM==max(KSM),arr.ind = TRUE)
+        # print(max(KSM))
+        # print(kssub)
+        # 
+        # aafit <- sapply(1:ncol(bb), function(i) weighted.mean(c(bb[1,i],bb[2,i],bb[3,i]),w=ksV[kssub[1,]],na.rm=TRUE) )
+        # KS_curves(aafit[(n.bad+1):n.sam],aafit[1:n.bad],plot=TRUE)
+        
+        
+        
+        # tmp0 <- 1:nrow(samples)
+        # for(i in 1:nrow(samples)){
+        #         print(i)
+        #         fields0 <- samples[i,]
+        #         tmp  <- Credit_v0_1_test(fields0,trees1,scores1,nleaf,w3)
+        #         aa[,i] <- unlist(tmp$result[c(1:3,aasubs+3,163:169)])
+        # }
+       
         mains <- outputN[-c(1:3)]#c("近期","远期","航空","综合")
         k <- 1
         for(n in 4:27){
@@ -109,29 +141,73 @@ test <- function(){
                 k <- k+1
         }
         
-        
-        
-        
-        load("bb")
-        X <- as.matrix(t(bb))
-        mode(X) <- "numeric"
-        colnames(X) <- c("X1","X2","X3")
-        Y <- c(rep(0,n.bad),rep(1,n.sam-n.bad))
-        data <- list()
-        data$X <- X
-        data$Y <- Y
-        fitlm <- lm(Y~.,data=data.frame(data))
-        fitglm <- glm(Y~.,data=data.frame(data),family = binomial())
 
+        # X <- as.matrix(t(bb))
+        # mode(X) <- "numeric"
+        # colnames(X) <- c("X1","X2","X3")
+        # Y <- c(rep(0,n.bad),rep(1,n.sam-n.bad))
+        # data <- list()
+        # data$X <- X
+        # data$Y <- Y
+        # fitlm <- lm(Y~.,data=data.frame(data))
+        # fitglm <- glm(Y~.,data=data.frame(data),family = binomial())
+        # 
+        # aafit <- fitted(fitglm)
+        # KS_curves(aafit[(n.bad+1):n.sam],aafit[1:n.bad],plot=TRUE)
 
-        #fitglm1 <- glm.fit(X,Y,intercept = TRUE,family = binomial(), na.action = 'na.omit')
+}
 
-        aafit <- fitted(fitglm)
-        KS_curves(aafit[(n.bad+1):n.sam],aafit[1:n.bad],plot=TRUE)
-
-        #aafit <- fitted(fitglm1)
-        #KS_curves(aafit[(n.bad+1):n.sam],aafit[1:n.bad],plot=TRUE)
+Credit_v0_1_test <- function(fields0,trees1,scores1,nleaf,w3){
         
+        ## step 0: 由字符串解析出原始字段； 函数： ；原始字段表见文件：
+        
+        ## 首先判断是否具有一票否决权
+        yipiaoFlag <- 0
+        personOne <- fields0[1:3]
+        shenfenzhengNUM <- personOne[2]
+        oneage <- idcard_age(shenfenzhengNUM)
+        siFainfo <- read.csv("个人司法查询.csv")
+        siFaNUM <- siFainfo[,2]
+        for(i in 1:nrow(siFainfo)) siFaNUM[i] <- substr(siFainfo[i,2],1,14)
+        XinYongCut <- 0
+        fields0 <- fields0[-(1:3)]
+        fields0[grepl("N/A",fields0)] <- NA
+        
+        ## only for test
+        fields1=rep(0,100)
+        scores1=rep(0,100)
+        
+        if(oneage <= 18 | oneage>=60){
+                result <- c(personOne,rep(0,165),"年龄")
+                yipiaoFlag <- 1
+        }else if( any(siFaNUM==substr(shenfenzhengNUM,1,14)) ){
+                tmpsub <- which(siFaNUM==substr(shenfenzhengNUM,1,14))
+                if(siFainfo[tmpsub,3]>0){
+                        ## 司法记录
+                        result <- c(personOne,rep(0,165),"司法记录")
+                        yipiaoFlag <- 1
+                }
+        }
+        
+        if(yipiaoFlag == 0){
+                ## step 4: 计算每一个层次的打分，并获得最终输出打分； 函数：credit_scores;
+                scores <- credit_scores(trees1,scores1,nleaf,w3)
+                
+                ## step 5: Output
+                result1 <- unlist(c(personOne,scores))
+                
+                #!!!!! 24 sub only for test
+                if(is.na(as.numeric(result1[165])) | as.numeric(result1[165]) <= XinYongCut){
+                        ## 信用历史
+                        result <- c(result1,"信用历史") #！！！！！
+                        result[c(71,1,123,165)+3] <- 0
+                }else{
+                        result <- c(result1,0)         
+                }
+        }
+        
+
+        list(result=result,fields0=fields0, fields1=fields1,scores1=scores1)
 }
 
 name_ID <- function(name,id){
@@ -166,7 +242,7 @@ KS_curves <- function(goodV,badV,main="",plot=FALSE){
 }
 
 
-
+##=======================================================================================================================
 
 Credit_v0_1 <- function(fields0){
         ## 输入原始字段：fields0; 原始字段顺序见文件：Dictionary_HQ_raw_v0.csv
@@ -731,7 +807,7 @@ trees_construct <- function(){
         list(tree1=tree1,tree2=tree2,tree3=tree3)
 }
 
-credit_scores <- function(trees1,scores1,nleaf){
+credit_scores <- function(trees1,scores1,nleaf,w3=c(1,10,1)){
         
         n1 <- 1:nleaf[1]
         n2 <- (nleaf[1]+1):nleaf[2]
@@ -753,7 +829,7 @@ credit_scores <- function(trees1,scores1,nleaf){
         result3 <- Get(list(tree3$Shehuiguanxi1,tree3$Shenfentezhi3,tree3$Xinyonglishi4,tree3$Xingweipianhao2,tree3$Lvyuenengli5,tree3),attribute = "value")
 
         #result4 <- sapply(1:length(result1), function(i) weighted.mean(c(result1[i], result3[i]), w=c(3,1), na.rm = TRUE))
-        result4 <- sapply(1:length(result2), function(i) weighted.mean(c(result2[i], result1[i], result3[i]), w=c(3,4,1), na.rm = TRUE))
+        result4 <- sapply(1:length(result2), function(i) weighted.mean(c(result2[i], result1[i], result3[i]), w=w3, na.rm = TRUE))
         
         # i=6
         # result4[i] <-  weighted.mean(c(result2[i], result1[i], result3[i]), w=c(7.713098, -4.913049, 5.940099))
