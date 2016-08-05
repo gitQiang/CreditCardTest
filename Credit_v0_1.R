@@ -1,247 +1,5 @@
 library(data.tree)
 
-## only for test
-test <- function(){
-        
-        rm(list=ls())
-        gc()
-        library(xlsx)
-        setwd("D:/data/中行个人征信/中行个人征信共享")
-        source('D:/code/CreditCardTest/Credit_v0_1.R')
-        
-        ## 划分好坏样本
-        #samlab <- read.csv("goodbad3.csv")
-        samlab <- read.delim("goodbad3.txt",sep="\t",header = FALSE)
-        samlab[,5] <- samlab[,7]
-        
-        samlab <- samlab[order(-samlab[,5]), ]
-        shenfenNUM14 <- sapply(1:nrow(samlab), function(i) substr(samlab[i,3],1,14))
-        samlab[,1] <- paste(samlab[,2], shenfenNUM14,sep="_")
-        samlab <- samlab[!duplicated(samlab[,1]),  ]
-        
-        badCut <- 0
-        labels <- rep(0,nrow(samlab))
-        labels[samlab[,5] > badCut] <- 1
-        samlab <- cbind(samlab,labels)
-        
-        
-        ### 读取所有可以的样本
-        samples <- read.xlsx2("数据样本0727-黄强4.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
-        samples <- samples[ ,1:60]
-        sam0729Yi <- read.xlsx2("数据样本0729 - 移动全.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
-        sam0729Yi[sam0729Yi=="ERROR"] <- NA
-        sam0729Lian <- read.xlsx2("数据样本0729 - 联通全.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
-        sam0729Lian[sam0729Lian=="ERROR"] <- NA
-        samples <- rbind(samples,sam0729Yi,sam0729Lian)
-        samtmp <- name_ID(samples[,1],samples[,2])
-        
-        
-        ff <- 1
-        if(ff==1){
-                siFanames <- read.delim("涉及司法信息-0729.txt",sep='\t',header = TRUE)
-                tmp <- name_ID(siFanames[,1],siFanames[,2])
-                samples <- samples[!(samtmp %in% tmp), ]
-        }
-        samtmp <- name_ID(samples[,1],samples[,2])
-        
-        ## 按照坏样本和好样本排序
-        interSam <- intersect(samtmp,samlab[,1])
-        interSam <- samlab[samlab[,1] %in% interSam,1]
-        samples <- samples[match(interSam,samtmp), ]
-        n.bad <- sum(samlab[samlab[,1] %in% interSam,5] > badCut)
-        n.sam <- nrow(samples)
-        
-        
-        ### 运行所有样本的打分
-        samsN <- unlist(samples[,1])
-        outputN <- unlist(read.csv("所有输出字段表.csv",header = F)[,1])
-        rawfieN <- unlist(read.csv("所有原始字段表.csv",header = F)[,1])
-        newfieN <- unlist(read.csv("所有衍生字段表.csv",header = F))
-        
-        treeNodes <- read.table("AllTreesNodes.txt")
-        treeNodes <- rbind(cbind(c("姓名","身份证号","手机号"),1),treeNodes,cbind(c("社会关系","身份特质","信用历史","行为偏好","履约能力","综合","一票否决"),1))
-        
-        aa <- matrix(-1,28,n.sam)
-        aasubs <- c(107,110,113,72,83,71,49,52,55,2,25,1,156,150,135,153,124,123)
-        bb <- matrix(-1,60,n.sam)
-        cc <- matrix(-1,103,n.sam)
-        dd <- matrix(-1,103,n.sam)
-        ee <- matrix(-1,169,n.sam)
-        
-        colnames(aa) <- samsN
-        colnames(bb) <- samsN
-        colnames(cc) <- samsN
-        rownames(aa) <- outputN
-        rownames(bb) <- rawfieN
-        rownames(cc) <- c("姓名","身份证号","手机号",newfieN)
-        rownames(dd) <- c("姓名","身份证号","手机号",newfieN)
-        
-        tmp0 <- 1:nrow(samples)
-        for(i in 1:nrow(samples)){
-                print(i)
-                fields0 <- samples[i,]
-                tmp  <- Credit_v0_1(fields0)
-                aa[,i] <- unlist(tmp$result[c(1:3,aasubs+3,163:169)])
-                
-                bb[,i] <- unlist(c(fields0[1:3], tmp$fields0))
-                cc[,i] <- unlist(c(fields0[1:3], tmp$fields1))
-                dd[,i] <- unlist(c(fields0[1:3], tmp$scores1))
-                ee[,i] <- unlist(tmp$result)
-                tmp0[i] <- tmp$result[168]
-        }
-        ee <- cbind(treeNodes,ee)
-        write.csv(aa,file="样本输出矩阵_2.csv",quote=FALSE)
-        write.table(bb,file="原始指标矩阵_2.xls",quote=FALSE,sep="\t")
-        write.table(t(bb),file="原始指标矩阵转置_2.xls",quote=FALSE,sep="\t")
-        write.csv(cc,file="衍生指标矩阵_2.csv",quote=FALSE)
-        write.csv(dd,file="衍生打分矩阵_2.csv",quote=FALSE)
-        write.csv(ee,file="所有打分矩阵_2.csv",quote=FALSE)
-        
-        plot(1:length(tmp0), as.numeric(tmp0),type="b")
-        abline(v=n.bad+0.5,col=2,lwd=2)
-        
-
-        # ### 进一步： 遍历最优权重比例， 然后重新运行， 计算KS值
-        # bb <- aa[c(9,15,21), ]
-        # mode(bb) <- "numeric"
-        # 
-        # ksV <- 1:10
-        # KSM <- array(0,dim=c(10,10,10))
-        # for(w1 in 1:10){
-        #         for(w3 in 1:10){
-        #                 for(w2 in 1:10){
-        #                         oneV <- sapply(1:ncol(bb), function(i) weighted.mean(c(bb[1,i],bb[2,i],bb[3,i]),w=c(w1,w2,w3),na.rm=TRUE) )
-        #                         KSM[w1,w2,w3] <- KS_curves(oneV[(n.bad+1):n.sam],oneV[1:n.bad])
-        #                 }
-        #         }
-        #         print(w1)
-        # }
-        # 
-        # kssub <- which(KSM==max(KSM),arr.ind = TRUE)
-        # print(max(KSM))
-        # print(kssub)
-        # 
-        # aafit <- sapply(1:ncol(bb), function(i) weighted.mean(c(bb[1,i],bb[2,i],bb[3,i]),w=ksV[kssub[1,]],na.rm=TRUE) )
-        # KS_curves(aafit[(n.bad+1):n.sam],aafit[1:n.bad],plot=TRUE)
-        
-        
-        
-        # tmp0 <- 1:nrow(samples)
-        # for(i in 1:nrow(samples)){
-        #         print(i)
-        #         fields0 <- samples[i,]
-        #         tmp  <- Credit_v0_1_test(fields0,trees1,scores1,nleaf,w3)
-        #         aa[,i] <- unlist(tmp$result[c(1:3,aasubs+3,163:169)])
-        # }
-       
-        mains <- outputN[-c(1:3)]#c("近期","远期","航空","综合")
-        k <- 1
-        for(n in 4:27){
-                KS_curves(aa[n,(n.bad+1):n.sam],aa[n,1:n.bad],main=mains[k],plot=TRUE)
-                k <- k+1
-        }
-        
-
-        # X <- as.matrix(t(bb))
-        # mode(X) <- "numeric"
-        # colnames(X) <- c("X1","X2","X3")
-        # Y <- c(rep(0,n.bad),rep(1,n.sam-n.bad))
-        # data <- list()
-        # data$X <- X
-        # data$Y <- Y
-        # fitlm <- lm(Y~.,data=data.frame(data))
-        # fitglm <- glm(Y~.,data=data.frame(data),family = binomial())
-        # 
-        # aafit <- fitted(fitglm)
-        # KS_curves(aafit[(n.bad+1):n.sam],aafit[1:n.bad],plot=TRUE)
-
-}
-
-Credit_v0_1_test <- function(fields0,trees1,scores1,nleaf,w3){
-        
-        ## step 0: 由字符串解析出原始字段； 函数： ；原始字段表见文件：
-        
-        ## 首先判断是否具有一票否决权
-        yipiaoFlag <- 0
-        personOne <- fields0[1:3]
-        shenfenzhengNUM <- personOne[2]
-        oneage <- idcard_age(shenfenzhengNUM)
-        siFainfo <- read.csv("个人司法查询.csv")
-        siFaNUM <- siFainfo[,2]
-        for(i in 1:nrow(siFainfo)) siFaNUM[i] <- substr(siFainfo[i,2],1,14)
-        XinYongCut <- 0
-        fields0 <- fields0[-(1:3)]
-        fields0[grepl("N/A",fields0)] <- NA
-        
-        ## only for test
-        fields1=rep(0,100)
-        scores1=rep(0,100)
-        
-        if(oneage <= 18 | oneage>=60){
-                result <- c(personOne,rep(0,165),"年龄")
-                yipiaoFlag <- 1
-        }else if( any(siFaNUM==substr(shenfenzhengNUM,1,14)) ){
-                tmpsub <- which(siFaNUM==substr(shenfenzhengNUM,1,14))
-                if(siFainfo[tmpsub,3]>0){
-                        ## 司法记录
-                        result <- c(personOne,rep(0,165),"司法记录")
-                        yipiaoFlag <- 1
-                }
-        }
-        
-        if(yipiaoFlag == 0){
-                ## step 4: 计算每一个层次的打分，并获得最终输出打分； 函数：credit_scores;
-                scores <- credit_scores(trees1,scores1,nleaf,w3)
-                
-                ## step 5: Output
-                result1 <- unlist(c(personOne,scores))
-                
-                #!!!!! 24 sub only for test
-                if(is.na(as.numeric(result1[165])) | as.numeric(result1[165]) <= XinYongCut){
-                        ## 信用历史
-                        result <- c(result1,"信用历史") #！！！！！
-                        result[c(71,1,123,165)+3] <- 0
-                }else{
-                        result <- c(result1,0)         
-                }
-        }
-        
-
-        list(result=result,fields0=fields0, fields1=fields1,scores1=scores1)
-}
-
-name_ID <- function(name,id){
-        sapply(1:length(name), function(i) paste(name[i], substr(id[i],1,14),sep="_") )
-}
-
-KS_curves <- function(goodV,badV,main="",plot=FALSE){
-        sample1 <- as.numeric(badV)
-        sample1 <- sample1[!is.na(sample1)]
-        sample2 <- as.numeric(goodV)
-        sample2 <- sample2[!is.na(sample2)]
-        
-        x0 <- seq(1,0,-0.0001)
-        y1 <- sapply(x0,function(x01) sum(sample1 >= x01))
-        y1 <- y1/length(sample1)
-        y2 <- sapply(x0,function(x01) sum(sample2 >= x01))
-        y2 <- y2/length(sample2)
-        xv <- which.max(y2-y1)
-
-        if(plot){
-                print(max(y2-y1))
-                plot(1:length(x0),y1,  col=1,lwd=1,xaxt="n",type="l",xlab="Score",ylab="Fn(x)",main=main,ylim=c(0,1))
-                lines(1:length(x0),y2, col=2,lwd=1,type="l")
-                abline(v=xv,col="blue",lwd=2)
-                legend("bottomright",legend=c("坏样本","好样本"),col=1:2,lwd=2)
-                text(xv,y=0.5,round(max(y2-y1),4))
-                axis(1,at=seq(1,length(x0),length.out=10),labels=round(seq(1,0,length.out = 10),2))
-        }
-        
-        ks <- max(y2-y1)
-        ks
-}
-
-
 ##=======================================================================================================================
 
 Credit_v0_1 <- function(fields0){
@@ -264,17 +22,19 @@ Credit_v0_1 <- function(fields0){
         fields0[grepl("N/A",fields0)] <- NA
         
         ## only for test
-        fields1=rep(0,100)
-        scores1=rep(0,100)
+        fields1=rep(0,104)
+        scores1=rep(0,104)
+        ntmp <- 169
+        
         
         if(oneage <= 18 | oneage>=60){
-                result <- c(personOne,rep(0,165),"年龄")
+                result <- c(personOne,rep(0,ntmp),"年龄")
                 yipiaoFlag <- 1
         }else if( any(siFaNUM==substr(shenfenzhengNUM,1,14)) ){
                 tmpsub <- which(siFaNUM==substr(shenfenzhengNUM,1,14))
                 if(siFainfo[tmpsub,3]>0){
                         ## 司法记录
-                        result <- c(personOne,rep(0,165),"司法记录")
+                        result <- c(personOne,rep(0,ntmp),"司法记录")
                         yipiaoFlag <- 1
                 }
         }
@@ -325,10 +85,10 @@ Credit_v0_1 <- function(fields0){
                 result1 <- unlist(c(personOne,scores))
                 
                 #!!!!! 24 sub only for test
-                if(is.na(as.numeric(result1[165])) | as.numeric(result1[165]) <= XinYongCut){
+                if(is.na(as.numeric(result1[ntmp])) | as.numeric(result1[ntmp]) <= XinYongCut){
                         ## 信用历史
                         result <- c(result1,"信用历史") #！！！！！
-                        result[c(71,1,123,165)+3] <- 0
+                        result[c(73,1,127,ntmp)] <- 0
                 }else{
                         result <- c(result1,0)         
                 }
@@ -346,9 +106,11 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         fieldsHangkong <- fields0I[40:length(fields0I)]
         
         nleaf <- 1:3
-        fields1 <- 1:100
+        fields1 <- 1:104
         ## 金融画像远期原始字段到衍生字段映射
         n <- 0
+        
+        ## xingfeipianhao
         fields1[n+1] <- fields0[n+9]/fields0[n+8]
         fields1[n+2] <- fields0[n+2]
         fields1[n+3] <- fields0[n+10]
@@ -361,90 +123,98 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         fields1[n+10] <- NA
         fields1[n+11] <- fields0[n+4]/fields0[n+10]
         fields1[n+12] <- fields0[n+15]/fields0[n+17]
-        fields1[n+13] <- fields0[n+3]
-        fields1[n+14] <- fields0[n+1]
-        fields1[n+15] <- fields0[n+36]
+        fields1[n+13] <- (fields0[n+5] + fields0[n+16])/(fields0[n+2] + fields0[n+35]) ### add 0805 Shiyonglv
+        fields1[n+14] <- fields0[n+3]
+        fields1[n+15] <- fields0[n+1]
+        fields1[n+16] <- fields0[n+36]
         
         #lvyuenengli
-        fields1[n+16] <- fields0[n+8]/12
-        fields1[n+17] <- fields0[n+7]/12
-        fields1[n+18] <- fields0[n+9]/12
-        fields1[n+19] <- (fields0[n+10]+fields0[n+17])/12
-        fields1[n+20] <- (fields0[n+15]+fields0[n+4])/12
-        fields1[n+21] <- fields0[n+17]/fields0[n+16]
-        fields1[n+22] <- fields0[n+16]/12
-        fields1[n+23] <- fields0[n+6]/12
-        fields1[n+24] <- fields0[n+5]/12
-        fields1[n+25] <- fields0[n+8]/(fields0[n+17]+fields0[n+10])
-        fields1[n+26] <- (fields0[n+10]+fields0[n+17])/(fields0[n+6])
-        fields1[n+27] <- fields0[n+37]
-        fields1[n+28] <- fields0[n+8]-fields0[n+6]
-        fields1[n+29] <- fields0[n+9]
+        fields1[n+17] <- fields0[n+8]/12
+        fields1[n+18] <- fields0[n+7]/12
+        fields1[n+19] <- fields0[n+9]/12
+        fields1[n+20] <- (fields0[n+10]+fields0[n+17])/12
+        fields1[n+21] <- (fields0[n+15]+fields0[n+4])/12
+        fields1[n+22] <- fields0[n+17]/fields0[n+16]
+        fields1[n+23] <- fields0[n+16]/12
+        fields1[n+24] <- fields0[n+6]/12
+        fields1[n+25] <- fields0[n+5]/12
+        fields1[n+26] <- fields0[n+8]/(fields0[n+17]+fields0[n+10])
+        fields1[n+27] <- (fields0[n+10]+fields0[n+17])/(fields0[n+6])
+        fields1[n+28] <- fields0[n+37]
+        fields1[n+29] <- fields0[n+8]-fields0[n+6]
+        fields1[n+30] <- fields0[n+9]
         
         #shehuiguanxi
-        fields1[n+30] <- fields0[n+38]
-        fields1[n+31] <- fields0[n+39]
+        fields1[n+31] <- fields0[n+38]
+        fields1[n+32] <- fields0[n+39]
         
         #shenfentezhi
-        ##fields1[n+32] <- shenfentezhi(nianling)
-        ##fields1[n+33] <- juzhudi
-        
-        fields1[n+32] <- idcard_age(shenfenzhengNUM)
-        fields1[n+33] <- city(idcard(shenfenzhengNUM))
+        fields1[n+33] <- idcard_age(shenfenzhengNUM)
+        fields1[n+34] <- idcard_sex(shenfenzhengNUM)
+        fields1[n+35] <- city(idcard(shenfenzhengNUM))
         
         #xinyonglishi
-        fields1[n+34] <- fields0[n+35]
-        fields1[n+35] <- fields0[n+34]
-        fields1[n+36] <- fields0[n+17]/12
-        fields1[n+37] <- fields0[n+16]/12
-        fields1[n+38] <- fields0[n+15]/fields0[n+17]
-        fields1[n+39] <- fields0[n+17]/fields0[n+16]
-        fields1[n+40] <- fields0[n+39]
-        fields1[n+41] <- fields0[n+12]/12
-        fields1[n+42] <- fields0[n+11]/12
-        fields1[n+43] <- fields0[n+12]/fields0[n+18]
-        fields1[n+44] <- fields0[n+18]-fields0[n+12]
+        fields1[n+36] <- fields0[n+35]
+        fields1[n+37] <- fields0[n+34]
+        fields1[n+38] <- fields0[n+17]/12
+        fields1[n+39] <- fields0[n+16]/12
+        fields1[n+40] <- fields0[n+15]/fields0[n+17]
+        fields1[n+41] <- fields0[n+17]/fields0[n+16]
+        fields1[n+42] <- fields0[n+39]
+        fields1[n+43] <- fields0[n+12]/12
+        fields1[n+44] <- fields0[n+11]/12
+        fields1[n+45] <- fields0[n+12]/fields0[n+18]
+        fields1[n+46] <- fields0[n+18]-fields0[n+12]
         
         
         ## 金融画像近期原始字段到衍生字段映射
-        n1 <- 44
+        n <- 0
+        n1 <- 46
         nleaf[1] <- n1
-        
+        ## xingweipianhao
         fields1[n1+1] <- fields0[n+24]/fields0[n+23]
         fields1[n1+2] <- fields0[n+24]/fields0[n+9]
         fields1[n1+3] <- fields0[n+25]/fields0[n+17]
         fields1[n1+4] <- NA
         fields1[n1+5] <- fields0[n+19]/fields0[n+25]
         fields1[n1+6] <- fields0[n+30]/fields0[n+17]
-        fields1[n1+7] <- fields0[n+23]
-        fields1[n1+8] <- fields0[n+22]
-        fields1[n1+9] <- (fields0[n+23]/3)/(fields0[n+8]/12)
-        fields1[n1+10] <- (fields0[n+22]/3)/(fields0[n+7]/12)
-        fields1[n1+11] <- fields0[n+32]+fields0[n+21]
-        fields1[n1+12] <- fields0[n+31]+fields0[n+20]
-        fields1[n1+13] <- ((fields0[n+32]+fields0[n+21])/3)/((fields0[n+17]+fields0[n+6])/12)
-        fields1[n1+14] <- ((fields0[n+31]+fields0[n+20])/3)/((fields0[n+16]+fields0[n+5])/12)
-        fields1[n1+15] <- (fields0[n+23]/(fields0[n+32]+fields0[n+21]))/(fields0[n+8]/(fields0[n+6]+fields0[n+17]))
-        fields1[n1+16] <- fields0[n+23]/(fields0[n+32]+fields0[n+21])
-        fields1[n1+17] <- ((fields0[n+32]+fields0[n+25])/(fields0[n+32]+fields0[n+21]))/((fields0[n+17]+fields0[n+10])/(fields0[n+17]+fields0[n+6]))
-        fields1[n1+18] <- (fields0[n+32]+fields0[n+25])/(fields0[n+32]+fields0[n+21])
-        fields1[n1+19] <- fields0[n+37]
-        fields1[n1+20] <- fields0[n+38] # zaixianshichang
-        fields1[n1+21] <- fields0[n+39] # shoujixiaofei 
-        fields1[n1+22] <- NA # gaoguanrenzhi
-        fields1[n1+23] <- city(idcard(shenfenzhengNUM)) # juzhudi
-        fields1[n1+24] <- fields0[n+32]
-        fields1[n1+25] <- fields0[n+31]
-        fields1[n1+26] <- (fields0[n+32]/3)/(fields0[n+17]/12)
-        fields1[n1+27] <- (fields0[n+31]/3)/(fields0[n+16]/12)
-        fields1[n1+28] <- fields0[n+27]/fields0[n+33]
-        fields1[n1+29] <- (fields0[n+27]/fields0[n+33])/(fields0[n+12]/fields0[n+18])
-        fields1[n1+30] <- fields0[n+33] - fields0[n+27]
+        fields1[n1+7] <- (fields0[n+20]+fields0[n+31])/(fields0[n+2]+fields0[n+35]) ### add 0805
+ 
+        ## lvyuenengli 
+        fields1[n1+8] <- fields0[n+23]
+        fields1[n1+9] <- fields0[n+22]
+        fields1[n1+10] <- (fields0[n+23]/3)/(fields0[n+8]/12)
+        fields1[n1+11] <- (fields0[n+22]/3)/(fields0[n+7]/12)
+        fields1[n1+12] <- fields0[n+32]+fields0[n+21]
+        fields1[n1+13] <- fields0[n+31]+fields0[n+20]
+        fields1[n1+14] <- ((fields0[n+32]+fields0[n+21])/3)/((fields0[n+17]+fields0[n+6])/12)
+        fields1[n1+15] <- ((fields0[n+31]+fields0[n+20])/3)/((fields0[n+16]+fields0[n+5])/12)
+        fields1[n1+16] <- (fields0[n+23]/(fields0[n+32]+fields0[n+21]))/(fields0[n+8]/(fields0[n+6]+fields0[n+17]))
+        fields1[n1+17] <- fields0[n+23]/(fields0[n+32]+fields0[n+21])
+        fields1[n1+18] <- ((fields0[n+32]+fields0[n+25])/(fields0[n+32]+fields0[n+21]))/((fields0[n+17]+fields0[n+10])/(fields0[n+17]+fields0[n+6]))
+        fields1[n1+19] <- (fields0[n+32]+fields0[n+25])/(fields0[n+32]+fields0[n+21])
+        fields1[n1+20] <- fields0[n+37]
+        fields1[n1+21] <- fields0[n+38] # zaixianshichang
+        fields1[n1+22] <- fields0[n+39] # shoujixiaofei 
+        
+        ## shenfentezhi
+        fields1[n1+23] <- idcard_age(shenfenzhengNUM) # Nianling
+        fields1[n1+24] <- idcard_sex(shenfenzhengNUM) # Xingbie
+        fields1[n1+25] <- city(idcard(shenfenzhengNUM)) # juzhudi
+        
+        ##
+        fields1[n1+26] <- fields0[n+32]
+        fields1[n1+27] <- fields0[n+31]
+        fields1[n1+28] <- (fields0[n+32]/3)/(fields0[n+17]/12)
+        fields1[n1+29] <- (fields0[n+31]/3)/(fields0[n+16]/12)
+        fields1[n1+30] <- fields0[n+27]/fields0[n+33]
+        fields1[n1+31] <- (fields0[n+27]/fields0[n+33])/(fields0[n+12]/fields0[n+18])
+        fields1[n1+32] <- fields0[n+33] - fields0[n+27]
         
 
         ## 航空原始字段到衍生字段映射
         n <- 0
-        n2 <- 74
+        n2 <- 78
         nleaf[2] <- n2
         nspe <- n2 + c(1,19,21)
         
@@ -482,7 +252,9 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         nleaf[3] <- length(fields1)
         
         ## add special index for Jinrong Chang and Duan
-        nspe <- c(33,67,nspe)
+        nspe <- c(13,35, ## shiyonglv; juzhudi; Changqi
+                  53,71, ## shiyonglv; juzhudi; Duanqi
+                  nspe)
         
         list(fields1=fields1,nleaf=nleaf,nspe=nspe)
 }
@@ -634,6 +406,7 @@ trees_construct <- function(){
         Wanggouyushitidianbili_tree1 <- Yongkaxiguan_tree1$AddChild("Wanggouyushitidianbili")
         Jiejikaxianshangxiaofeijine12_tree1 <-  Wanggouyushitidianbili_tree1$AddChild("Jiejikaxianshangxiaofeijine12")
         Xinyongkaxianshangxiaofeijine12_tree1 <-  Wanggouyushitidianbili_tree1$AddChild("Xinyongkaxianshangxiaofeijine12")
+        Shiyonglv_tree1 <- Yongkaxiguan_tree1$AddChild("Shiyonglv") # add0805
         Yongkanianxian_tree1 <- Xingweipianhao_tree1$AddChild("Yongkanianxian")
         Jiejikayongkanianxian_tree1 <- Yongkanianxian_tree1$AddChild("Jiejikayongkanianxian")
         Jiejikazhangling_tree1 <- Jiejikayongkanianxian_tree1$AddChild("Jiejikazhangling")
@@ -668,6 +441,7 @@ trees_construct <- function(){
         Shoujixiaofei_tree1 <- Shehuiguanxi_tree1$AddChild("Shoujixiaofei")
         Shenfentezhi_tree1 <- tree1$AddChild("Shenfentezhi")
         Nianling_tree1 <-  Shenfentezhi_tree1$AddChild("Nianling")
+        Xingbie_tree1 <-  Shenfentezhi_tree1$AddChild("Xingbie") # add 0805
         #Gaoguanrenzhi_tree1 <-  Shenfentezhi_tree1$AddChild("Gaoguanrenzhi")
         #GerentouziShen_tree1 <-  Shenfentezhi_tree1$AddChild("GerentouziShen")
         Juzhudi_tree1 <-  Shenfentezhi_tree1$AddChild("Juzhudi")
@@ -702,6 +476,7 @@ trees_construct <- function(){
         Wanggouyushitidianbili_tree2 <- Yongkaxiguan_tree2$AddChild("Wanggouyushitidianbili")
         Xianshangxiaofeibijiejika_tree2 <- Wanggouyushitidianbili_tree2$AddChild("Xianshangxiaofeibijiejika")
         Xianshangxiaofeibixinyongka_tree2 <- Wanggouyushitidianbili_tree2$AddChild("Xianshangxiaofeibixinyongka")
+        Shiyonglv_tree2 <- Yongkaxiguan_tree2$AddChild("Shiyonglv") #add 0805
         Lvyuenengli_tree2 <- tree2$AddChild("Lvyuenengli")
         Shouzhi_tree2 <-  Lvyuenengli_tree2$AddChild("Shouzhi")  
         Shou_tree2 <- Shouzhi_tree2$AddChild("Shou")
@@ -730,7 +505,8 @@ trees_construct <- function(){
         Zaixianshichang_tree2 <- Shehuiguanxi_tree2$AddChild("Zaixianshichang")
         Shoujixiaofei_tree2 <- Shehuiguanxi_tree2$AddChild("Shoujixiaofei")
         Shenfentezhi_tree2 <- tree2$AddChild("Shenfentezhi")
-        Gaoguanrenzhi_tree2 <-  Shenfentezhi_tree2$AddChild("Gaoguanrenzhi")
+        Nianling_tree2 <-  Shenfentezhi_tree2$AddChild("Nianling") ## replace 0805
+        Xingbie_tree2 <- Shenfentezhi_tree2$AddChild("Xingbie") ## add 0805
         #GerentouziShen_tree2 <-  Shenfentezhi_tree2$AddChild("GerentouziShen")
         Juzhudi_tree2 <-  Shenfentezhi_tree2$AddChild("Juzhudi")
         Xinyonglishi_tree2 <- tree2$AddChild("Xinyonglishi")
@@ -785,19 +561,20 @@ trees_construct <- function(){
                         Chengshijizhongdu1_tree3 <- Shehuiguanxi1_tree3$AddChild("Chengshijizhongdu1")
               
         tree1$Set(weight = c(10,2,4,4,3,2,8,0,3,1,
-                             5,4,2,1,5,4,2,5,5,2,
-                             5,5,5,5,3,8,3,7,3,3,
-                             2,3,7,4,2,4,3,5,7,3,
-                             4,6,4,2,6,4,6,4,1,5,
-                             5,1,5,5,3,4,8,2,2,6,
-                             3,3,2,2,2,6,4,1,5,5))
+                             5,4,2,1,5,4,2,5,5,5,
+                             2,5,5,5,5,3,8,3,7,3,
+                             3,2,3,7,4,2,4,3,5,7,
+                             3,4,6,4,2,6,4,6,4,1,
+                             5,5,1,5,5,5,3,4,8,2,
+                             2,6,3,3,2,2,2,6,4,1,
+                             5,5))
         
         tree2$Set(weight = c(10,2,5,5,5,5,5,5,5,5,
-                             5,5,3,8,3,7,7,3,3,7,
-                             3,3,7,7,3,3,7,3,4,6,
-                             3,7,4,3,7,2,1,5,5,1,
-                             5,5,3,4,2,2,3,3,6,5,
-                             5,5))
+                             5,5,5,3,8,3,7,7,3,3,
+                             7,3,3,7,7,3,3,7,3,4,
+                             6,3,7,4,3,7,2,1,5,5,
+                             1,5,5,5,3,4,2,2,3,3,
+                             6,5,5,5))
         
         tree3$Set(weight = c(1,5,5,6,4,4,1,1,4,1,
                              1,1,4,2,2,2,1,2,1,1,
@@ -830,11 +607,6 @@ credit_scores <- function(trees1,scores1,nleaf,w3=c(1,10,1)){
 
         #result4 <- sapply(1:length(result1), function(i) weighted.mean(c(result1[i], result3[i]), w=c(3,1), na.rm = TRUE))
         result4 <- sapply(1:length(result2), function(i) weighted.mean(c(result2[i], result1[i], result3[i]), w=w3, na.rm = TRUE))
-        
-        # i=6
-        # result4[i] <-  weighted.mean(c(result2[i], result1[i], result3[i]), w=c(7.713098, -4.913049, 5.940099))
-        # result4[i] <- result4[i] - 4.105965
-        # result4[i] <- 1/(exp(-result4[i])+1)
         
         result2[2] <- result1[2] ##!!!!!
         result <- c(result2,result1,result3,result4)
@@ -879,6 +651,15 @@ idcard_age<-function(s){
         age<-as.numeric(format(Sys.Date(),format='%Y'))-as.numeric(birthday)
         
         return(age)
+}
+
+idcard_sex <- function(s){
+        ## sex: man 1; women: 2; 
+        sex <- 0
+        if( nchar(s)==15 )  sex <- ifelse(as.numeric(substr(s,15,15)) %% 2 == 0, 2, 1)
+        if( nchar(s)==18 )  sex <- ifelse(as.numeric(substr(s,17,17)) %% 2 == 0, 2, 1)     
+        if( sex == 0 ) print("无效的身份证号")
+        sex
 }
 
 city<-function(s){
