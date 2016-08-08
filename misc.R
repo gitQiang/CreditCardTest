@@ -19,7 +19,7 @@ test <- function(){
         siFanames <- read.delim("涉及司法信息-0729.txt",sep='\t',header = TRUE)
         tmp <- name_ID(siFanames[,1],siFanames[,2])
         ## 划分好坏样本
-        samlab <- goodbadSample(flag=1)
+        samlab <- goodbadSample(flag=2) ### 好坏样本划分标准!!!!!
         labtmp <- name_ID(samlab[,1],samlab[,2])
         samlab <- samlab[!((labtmp %in% tmp) & samlab[,3]==0), ]
         labtmp <- name_ID(samlab[,1],samlab[,2])
@@ -76,41 +76,21 @@ test <- function(){
         write.csv(ee,file="OldOutput/所有打分矩阵_2.csv",quote=FALSE)
   
         #### test different methods
+        library(adabag)
+        library(rpart)
+        library(e1071)
+        library(randomForest)
+        library(party)
+        library(zoo)
         
-        mflag=1
-        if(mflag==1) ks <- ergodicf(aa,outputN,n.bad,n.sam)
-        
-        if(mflag>1){
-                a1 <- as.matrix(read.csv("OldOutput/衍生指标矩阵_2.csv"))
-                tmp <- as.matrix(read.csv("OldOutput/衍生打分矩阵_2.csv"))
-                a1[c(9,10,37,73,102)-1, ] <- tmp[c(9,10,37,73,102)-1, ]
-        
-                a1 <- a1[-(1:3), -1]
-                mode(a1) <- "numeric"
-                labs <- c(rep(0,n.bad),rep(1,n.sam-n.bad))
-                
-                x <- t(a1)
-                y <- labs
-                
-                
-                if(mflag==2) ks <- adaBoostf(x,y,K=4,plot=TRUE,labs=c(1,0))
-                if(mflag==3) ks <- rpartf(x,y,K=4,plot=TRUE,labs=c(1,0))
-                
-                      
-                if(mflag>3){ 
-                        x[x==Inf] <- 99999
-                        options(warn = -1)
-                        xyNew <- missingFill(x,y,flag=2)
-                        xyNew <- as.matrix(xyNew)
-                        options(warn = 0)
-                        x <- xyNew[,-1]
-                        #y <- xyNew[,1]
-                        if(mflag==4) ks <- SVMf(x,y,K=4,plot=TRUE,labs=c(1,0))
-                        if(mflag==5) ks <- RFsf(x,y,K=4,plot=TRUE,labs=c(1,0),1)
-                        if(mflag==6) ks <- RFsf(x,y,K=4,plot=TRUE,labs=c(1,0),2)
-                        #if(mflag==7) ks <- RFsf(x,y,K=4,plot=TRUE,labs=c(1,0),3)
-                        if(mflag==8) ks <- glmf(x,y,K=4,plot=TRUE,labs=c(1,0))
-                }
+        K=4
+        cvlist <- sample.cross(n.sam,K)
+        #save(cvlist,file="cvlist")
+        #load("cvlist")
+        for(mflag in c(1:6,8:10)){
+                print(mflag)
+                ks <- allmethods(mflag,n.bad,n.sam,cvlist,K,plot=TRUE,labs=c(1,0))
+                print(ks)
         }
         
 }
@@ -118,59 +98,148 @@ test <- function(){
 
 ### methods ===================================================
 
-ergodicf <- function(aa,outputN,n.bad,n.sam,K=4,plot=TRUE,labs=c(1,0)){
-        ### SVM
-        library(e1071)
+allmethods <- function(mflag,n.bad,n.sam,cvlist,K=4,plot=TRUE,labs=c(1,0)){
         
-        ### 进一步： 遍历最优权重比例， 然后重新运行， 计算KS值
-        bb <- aa[c(9,15,21), ]
-        mode(bb) <- "numeric"
-        
-        x <- t(bb)
-        y <- c(rep(0,n.bad),rep(1,n.sam-n.bad))
-        
-        n.sam <- nrow(x)
-        cvlist <- sample.cross(n.sam,K)
+        y <- c(rep(labs[2],n.bad),rep(labs[1],n.sam-n.bad))
         pV <- 1:n.sam
         
+        if(mflag==1){ ### 遍历最优权重比例， 然后重新运行， 计算KS值
+                options(stringsAsFactors = FALSE)
+                aa <- as.matrix(read.csv("OldOutput/样本输出矩阵_2.csv"))
+                aa <- aa[,-1]
+                outputN <- unlist(read.csv("所有输出字段表.csv",header = F)[,1])
+                bb <- aa[c(9,15,21), ]
+                mode(bb) <- "numeric"
+                x <- t(bb)
+        }
+        
+        if(mflag > 1 ){
+                yanshengM <- as.matrix(read.csv("OldOutput/衍生指标矩阵_2.csv"))
+                tmp <- as.matrix(read.csv("OldOutput/衍生打分矩阵_2.csv"))
+                yanshengM[c(9,10,37,73,102)-1, ] <- tmp[c(9,10,37,73,102)-1, ]
+                yanshengM <- yanshengM[-(1:3), -1]
+                mode(yanshengM) <- "numeric"
+                x <- t(yanshengM)
+               
+                if(mflag>3){
+                        x[x==Inf] <- 9999999
+                        options(warn = -1)
+                        xyNew <- missingFill(x,y,flag=2)
+                        xyNew <- as.matrix(xyNew)
+                        options(warn = 0)
+                        x <- xyNew[,-1]
+                }
+        }
+
         for(kk in 1:K){
+                ## train data
                 trainsub <- cvlist$train[[kk]]
                 xt <- x[trainsub, ]
                 yt <- y[trainsub]
-               
-                ksV <- 1:10
-                KSM <- array(0,dim=c(10,10,10))
-                for(w1 in 1:10){
-                        for(w3 in 1:10){
-                                for(w2 in 1:10){
-                                        oneV <- sapply(1:nrow(xt), function(i) weighted.mean(c(xt[i,1],xt[i,2],xt[i,3]),w=c(w1,w2,w3),na.rm=TRUE) )
-                                        KSM[w1,w2,w3] <- KS_curves(oneV[yt==1],oneV[yt==0])
-                                }
-                        }
-                        print(w1)
-                }
-                kssub <- which(KSM==max(KSM),arr.ind = TRUE)
                 
-                predisub <- cvlist$pred[[kk]]
-                xp <- x[predisub,]
-                preModel <- sapply(1:nrow(xp), function(i) weighted.mean(c(xp[i,1],xp[i,2],xp[i,3]),w=ksV[kssub[1,]],na.rm=TRUE) )
+                if(mflag %in% c(3,5,6,7,8,10)){
+                        a1 <- data.frame(xt,yt)
+                        colnames(a1) <- c(paste("X",1:(ncol(a1)-1),sep=""),"Class")
+                        rownames(a1) <- 1:nrow(a1)
+                        
+                        predisub <- cvlist$pred[[kk]]
+                        newdata <- x[predisub, ]
+                        colnames(newdata) <- paste("X",1:(ncol(a1)-1),sep="")
+                }
+                
+                ## one train and test
+                if(mflag==1){
+                        ksV <- 1:10
+                        KSM <- array(0,dim=c(10,10,10))
+                        for(w1 in 1:10){
+                                for(w3 in 1:10){
+                                        for(w2 in 1:10){
+                                                oneV <- sapply(1:nrow(xt), function(i) weighted.mean(c(xt[i,1],xt[i,2],xt[i,3]),w=c(w1,w2,w3),na.rm=TRUE) )
+                                                KSM[w1,w2,w3] <- KS_curves(oneV[yt==1],oneV[yt==0])
+                                        }
+                                }
+                                print(w1)
+                        }
+                        kssub <- which(KSM==max(KSM),arr.ind = TRUE)
+                        print(kssub)
+                        
+                        predisub <- cvlist$pred[[kk]]
+                        xp <- x[predisub,]
+                        preModel <- sapply(1:nrow(xp), function(i) weighted.mean(c(xp[i,1],xp[i,2],xp[i,3]),w=ksV[kssub[1,]],na.rm=TRUE) )
+                }
+                
+                if(mflag==2 | mflag==9){
+                        ### adaBoost
+                        yt <- as.character(yt)
+                        options(stringsAsFactors = TRUE)
+                        a1 <- data.frame(xt,yt)
+                        colnames(a1) <- c(paste("X",1:(ncol(a1)-1),sep=""),"Class")
+                        rownames(a1) <- 1:nrow(a1)
+                        adafit <- boosting(Class ~.,data=data.frame(a1), coeflearn="Zhu")
+                        
+                        # test:
+                        predisub <- cvlist$pred[[kk]]
+                        newdata <- x[predisub, ]
+                        colnames(newdata) <- paste("X",1:(ncol(a1)-1),sep="")
+                        preModel <- predict(adafit,newdata)$prob[,2]
+                }
+                
+                if(mflag==3 | mflag==10){
+                        #### rpart
+                        fit <- rpart(Class ~.,data=a1)
+                        preModel <- predict(fit, newdata=as.data.frame(newdata))
+                }
+                
+                if(mflag==4){
+                        yt <- as.character(yt)
+                        options(stringsAsFactors = TRUE)
+                        a1 <- data.frame(xt,yt)
+                        colnames(a1) <- c(paste("X",1:(ncol(a1)-1),sep=""),"Class")
+                        rownames(a1) <- 1:nrow(a1)
+                        model <- svm(Class ~., data=a1,probability = TRUE)  
+                        
+                        # test:
+                        predisub <- cvlist$pred[[kk]]
+                        newdata <- x[predisub, ]
+                        colnames(newdata) <- paste("X",1:(ncol(a1)-1),sep="")
+                        tmp <- predict(model, newdata,probability = TRUE)
+                        preModel <- attr(tmp,"probabilities")[ ,1]
+                }
+                
+                if(mflag==5){
+                        fit <- randomForest(x=a1[,1:(ncol(a1)-1)],y=as.factor(a1[,"Class"])) ### RandomForest method
+                        preModel <- predict(fit,as.data.frame(newdata),type="prob")[,2]
+                }
+                
+                if(mflag==6){ # randomForest method with ctree
+                        fit <- cforest(Class ~., data = a1)
+                        preModel <- predict(fit,newdata=as.data.frame(newdata),type="prob", OOB=TRUE)
+                        names(preModel) <- NULL
+                        preModel <- unlist(preModel)
+                }
+                
+                # if(mflag==7){
+                #         fit <- mob(Class ~.,data=a1,model=glinearModel,family=binomial())
+                # }
+                
+                
+                if(mflag==8){
+                        fit <- glm(Class ~.,data=a1,family=binomial())
+                        preModel <- predict(fit,as.data.frame(newdata), type = "response")
+                }
+                
                 pV[predisub] <- preModel
         }
+        
         
         if(plot){
                 KS_curves(pV[y==labs[1]], pV[y==labs[2]],main="",plot=plot)
                 ROCplot_hq(pV,y)
         }
         
+        options(stringsAsFactors = FALSE) ## mflag=2
         ks <- KS_value(pV[y==labs[1]], pV[y==labs[2]],plot=FALSE)
         ks
-        
-        # mains <- outputN[-c(1:3)]
-        # k <- 1
-        # for(n in 4:27){
-        #         KS_curves(aa[n,(n.bad+1):n.sam],aa[n,1:n.bad],main=mains[k],plot=TRUE)
-        #         k <- k+1
-        # }
 }
 
 SVMf <- function(x,y,K=4,plot=TRUE,labs=c(1,0)){
@@ -437,15 +506,19 @@ sample.cross <- function(nsample,K){
 
 missingFill <- function(x,y,flag=1){ 
         
-        if(flag==1) rfImpute(x,y)
+        if(flag==1) return(rfImpute(x,y))
         if(flag==2){
+                for(k in 1:ncol(x)) x[is.na(x[,k]), k] <-  mean(x[!is.na(x[,k]), k])
+                return(cbind(y,x))
+        }
+        if(flag==3){
                 labs=unique(y)
                 for(k in 1:ncol(x)){
                         x[y==labs[1], k] <- na.approx(x[y==labs[1], k],na.rm=FALSE)
                         x[y==labs[2], k] <- na.approx(x[y==labs[2], k],na.rm=FALSE)
                         x[is.na(x[,k]), k] <-  mean(x[!is.na(x[,k]), k])
                 }
-                cbind(y,x)
+                return(cbind(y,x))
         }
 
 }
