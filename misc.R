@@ -19,7 +19,7 @@ test <- function(){
         siFanames <- read.delim("涉及司法信息-0729.txt",sep='\t',header = TRUE)
         tmp <- name_ID(siFanames[,1],siFanames[,2])
         ## 划分好坏样本
-        samlab <- goodbadSample(flag=2) ### 好坏样本划分标准!!!!!
+        samlab <- goodbadSample(flag=1) ### 好坏样本划分标准!!!!!
         labtmp <- name_ID(samlab[,1],samlab[,2])
         samlab <- samlab[!((labtmp %in% tmp) & samlab[,3]==0), ]
         labtmp <- name_ID(samlab[,1],samlab[,2])
@@ -441,17 +441,8 @@ glmf <- function(x,y,K=4,plot=TRUE,labs=c(1,0)){
 RFglmf <- function(x,y,K=4,plot=TRUE,labs=c(1,0)){ }
 
 ###============================================================
-
 readSample <- function(){
-        ### 读取所有可以的样本
-        samples <- read.xlsx2("数据样本0727-黄强4.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
-        samples <- samples[ ,1:60]
-        sam0729Yi <- read.xlsx2("0729样本文件/数据样本0729 - 移动全.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
-        sam0729Yi[sam0729Yi=="ERROR"] <- NA
-        sam0729Lian <- read.xlsx2("0729样本文件/数据样本0729 - 联通全.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
-        sam0729Lian[sam0729Lian=="ERROR"] <- NA
-        samples <- rbind(samples,sam0729Yi,sam0729Lian)        
-        
+        samples <- read.delim("zhonghang_samples559.txt",header = TRUE,sep = "\t")
         samples
 }
 
