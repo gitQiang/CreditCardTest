@@ -1,10 +1,8 @@
 library(data.tree)
 
 ## only for test
-test <- function(){
+test <- function(samflag){
         
-        rm(list=ls())
-        gc()
         library(xlsx)
         setwd("D:/data/中行个人征信/中行个人征信共享")
         source('D:/code/CreditCardTest/Credit_v0_1.R')
@@ -19,7 +17,7 @@ test <- function(){
         siFanames <- read.delim("涉及司法信息-0729.txt",sep='\t',header = TRUE)
         tmp <- name_ID(siFanames[,1],siFanames[,2])
         ## 划分好坏样本
-        samlab <- goodbadSample(flag=1) ### 好坏样本划分标准!!!!!
+        samlab <- goodbadSample(flag=samflag) ### 好坏样本划分标准!!!!!
         labtmp <- name_ID(samlab[,1],samlab[,2])
         samlab <- samlab[!((labtmp %in% tmp) & samlab[,3]==0), ]
         labtmp <- name_ID(samlab[,1],samlab[,2])
@@ -56,7 +54,7 @@ test <- function(){
         
         tmp0 <- 1:nrow(samples)
         for(i in 1:nrow(samples)){
-                print(i)
+                #print(i)
                 fields0 <- samples[i,]
                 tmp  <- Credit_v0_1(fields0)
                 aa[,i] <- unlist(tmp$result[c(1:3,aasubs+3,167:173)])
@@ -68,13 +66,16 @@ test <- function(){
                 tmp0[i] <- tmp$result[172]
         }
         ee <- cbind(treeNodes,ee)
-        write.csv(aa,file="OldOutput/样本输出矩阵_2.csv",quote=FALSE)
-        write.table(bb,file="OldOutput/原始指标矩阵_2.xls",quote=FALSE,sep="\t")
-        write.table(t(bb),file="OldOutput/原始指标矩阵转置_2.xls",quote=FALSE,sep="\t")
-        write.csv(cc,file="OldOutput/衍生指标矩阵_2.csv",quote=FALSE)
-        write.csv(dd,file="OldOutput/衍生打分矩阵_2.csv",quote=FALSE)
-        write.csv(ee,file="OldOutput/所有打分矩阵_2.csv",quote=FALSE)
-  
+        write.csv(aa,file=paste("OldOutput/样本输出矩阵_hq",samflag,".csv",sep=""),quote=FALSE)
+        write.table(bb,file=paste("OldOutput/原始指标矩阵_hq",samflag,".xls",sep=""),quote=FALSE,sep="\t")
+        write.table(t(bb),file=paste("OldOutput/原始指标矩阵转置_hq",samflag,".xls",sep=""),quote=FALSE,sep="\t")
+        write.csv(cc,file=paste("OldOutput/衍生指标矩阵_hq",samflag,".csv",sep=""),quote=FALSE)
+        write.csv(dd,file=paste("OldOutput/衍生打分矩阵_hq",samflag,".csv",sep=""),quote=FALSE)
+        write.csv(ee,file=paste("OldOutput/所有打分矩阵_hq",samflag,".csv",sep=""),quote=FALSE)
+
+}
+
+testmethods <- function(samflag){
         #### test different methods
         library(adabag)
         library(rpart)
@@ -83,13 +84,49 @@ test <- function(){
         library(party)
         library(zoo)
         
+        nbads <- c(28,81)
+        nsams <- c(420,540)
+        
+        n.sam <- nsams[samflag]
+        n.bad <- nbads[samflag]
+        labs=c(1,0)
+        y <- c(rep(labs[2],n.bad),rep(labs[1],n.sam-n.bad))
+        
+        
         K=4
         cvlist <- sample.cross(n.sam,K)
         #save(cvlist,file="cvlist")
         #load("cvlist")
         for(mflag in c(1:6,8:10)){
+                if(mflag==1){
+                        aa <- as.matrix(read.csv(paste("OldOutput/样本输出矩阵_hq",samflag,".csv",sep="")))
+                        aa <- aa[,-1]
+                        outputN <- unlist(read.csv("所有输出字段表.csv",header = F)[,1])
+                        bb <- aa[c(9,15,21), ]
+                        mode(bb) <- "numeric"
+                        x <- t(bb)
+                }
+                
+                if(mflag > 1 ){
+                        yanshengM <- as.matrix(read.csv(paste("OldOutput/衍生指标矩阵_hq",samflag,".csv",sep="")))
+                        tmp <- as.matrix(read.csv(paste("OldOutput/衍生打分矩阵_hq",samflag,".csv",sep="")))
+                        yanshengM[c(9,10,37,73,102)-1, ] <- tmp[c(9,10,37,73,102)-1, ]
+                        yanshengM <- yanshengM[-(1:3), -1]
+                        mode(yanshengM) <- "numeric"
+                        x <- t(yanshengM)
+                        
+                        if(mflag>3){
+                                x[x==Inf] <- 9999999
+                                options(warn = -1)
+                                xyNew <- missingFill(x,y,flag=2)
+                                xyNew <- as.matrix(xyNew)
+                                options(warn = 0)
+                                x <- xyNew[,-1]
+                        }
+                }
+                
                 print(mflag)
-                ks <- allmethods(mflag,n.bad,n.sam,cvlist,K,plot=TRUE,labs=c(1,0))
+                ks <- allmethods(x,y,mflag,n.bad,n.sam,cvlist,K,plot=TRUE,labs=c(1,0))
                 print(ks)
         }
         
@@ -98,39 +135,10 @@ test <- function(){
 
 ### methods ===================================================
 
-allmethods <- function(mflag,n.bad,n.sam,cvlist,K=4,plot=TRUE,labs=c(1,0)){
-        
-        y <- c(rep(labs[2],n.bad),rep(labs[1],n.sam-n.bad))
+allmethods <- function(x,y,mflag,n.bad,n.sam,cvlist,K=4,plot=TRUE,labs=c(1,0)){
+
         pV <- 1:n.sam
         
-        if(mflag==1){ ### 遍历最优权重比例， 然后重新运行， 计算KS值
-                options(stringsAsFactors = FALSE)
-                aa <- as.matrix(read.csv("OldOutput/样本输出矩阵_2.csv"))
-                aa <- aa[,-1]
-                outputN <- unlist(read.csv("所有输出字段表.csv",header = F)[,1])
-                bb <- aa[c(9,15,21), ]
-                mode(bb) <- "numeric"
-                x <- t(bb)
-        }
-        
-        if(mflag > 1 ){
-                yanshengM <- as.matrix(read.csv("OldOutput/衍生指标矩阵_2.csv"))
-                tmp <- as.matrix(read.csv("OldOutput/衍生打分矩阵_2.csv"))
-                yanshengM[c(9,10,37,73,102)-1, ] <- tmp[c(9,10,37,73,102)-1, ]
-                yanshengM <- yanshengM[-(1:3), -1]
-                mode(yanshengM) <- "numeric"
-                x <- t(yanshengM)
-               
-                if(mflag>3){
-                        x[x==Inf] <- 9999999
-                        options(warn = -1)
-                        xyNew <- missingFill(x,y,flag=2)
-                        xyNew <- as.matrix(xyNew)
-                        options(warn = 0)
-                        x <- xyNew[,-1]
-                }
-        }
-
         for(kk in 1:K){
                 ## train data
                 trainsub <- cvlist$train[[kk]]
@@ -158,10 +166,10 @@ allmethods <- function(mflag,n.bad,n.sam,cvlist,K=4,plot=TRUE,labs=c(1,0)){
                                                 KSM[w1,w2,w3] <- KS_curves(oneV[yt==1],oneV[yt==0])
                                         }
                                 }
-                                print(w1)
+                                #print(w1)
                         }
                         kssub <- which(KSM==max(KSM),arr.ind = TRUE)
-                        print(kssub)
+                        #print(kssub)
                         
                         predisub <- cvlist$pred[[kk]]
                         xp <- x[predisub,]
@@ -447,7 +455,7 @@ readSample <- function(){
 }
 
 goodbadSample <- function(flag=1){
-        ##bad1 代表标签标准1：当前有欠款=坏，当前无欠款、历史无违约历史=好，其他样本=NA; bad2 标准2：当前有欠款=坏，当前无欠款且历史违约超过3次且最长超过5天=坏，其他样本=好。
+        ##bad1 代表标签标准1：当前有欠款=坏，当前无欠款、历史无违约历史=好，其他样本=NA; bad2 标准2：当前有欠款=坏，当前无欠款且（历史违约超过3次或最长超过5天）=坏，其他样本=好。
         
         # bad: 1; good: 0;
         
@@ -455,13 +463,14 @@ goodbadSample <- function(flag=1){
         a[,24]<-as.numeric(a[,24])
         a[,25]<-as.numeric(a[,25])
         a[,27]<-as.numeric(a[,27])
-        bad1<- -1
+        bad1<- rep(-1,nrow(a))
         bad1[which(a[,24]>0)] <- 1
         bad1[which(a[,24]==0&a[,25]==0)] <- 0
         
-        bad2<-0
+        bad2<- rep(0,nrow(a))
         bad2[which(a[,24]>0|a[,25]>0)]<-1
         bad2[which(a[,24]==0&a[,25]<=3&a[,27]<=5)]<-0
+        #bad2[a[,24]>0 | (a[,24]==0 & (a[,25]>3 | a[,27]>5)) ] <- 1
         b<-cbind(a,bad1,bad2)
         b<-b[,c(1,3,24,25,27,88,89)]
         

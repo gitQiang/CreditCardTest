@@ -155,6 +155,8 @@ i=127
 
         
         
+        
+        
 #合并坏样本按顺序===================
         
         library(xlsx)
@@ -174,6 +176,8 @@ i=127
         samples <- samples[c(sub1,sub2), ]
         write.table(samples,file="数据样本0727-黄强3.txt",quote=FALSE,sep="\t",row.names = FALSE)
 
+        
+        
         
         
 ### 民生剩余样本==========================        
@@ -196,24 +200,36 @@ i=127
         
         write.table(minsheng[,c(1,3,68)],file="民生样本592_3col.txt",row.names = FALSE,quote=FALSE,sep="\t")
         
+        
+        
+        
+        
+        
 ### 遍历三方面权重比例====================================
+        
+        
+        load("bb")
+        aa = bb
+        mode(aa) <- "numeric"
+        subs <- c(sample(142,100), sample(504-142,300)+142)
+        aa <- aa[,subs]
+        save(aa,file="bb_onetrain")
+        
         
         rm(list=ls())
         gc()
         source('D:/code/CreditCardTest/Credit_v0_1.R')
-        load("bb")
-        aa = bb
-        mode(aa) <- "numeric"
-        n.sam=51
-        n.bad=24
+        load("bb_onetrain")
+        n.sam=400
+        n.bad=100
         
-        KSM <- array(0,dim=c(50,50,50))
-        for(w1 in 1:50){
-                for(w3 in 1:50){
-                        for(w2 in 1:50){
+        KSM <- array(0,dim=c(21,21,21))
+        for(w1 in 1:21){
+                for(w3 in 1:21){
+                        for(w2 in 1:21){
                                 oneV <- sapply(1:ncol(aa), function(i) weighted.mean(c(aa[1,i],aa[2,i],aa[3,i]),w=c(w1,w2,w3),na.rm=TRUE) )
-                                if(w2>=w1 & w2 >=w3) KSM[w1,w2,w3] <- KS_curves(oneV[(n.bad+1):n.sam],oneV[1:n.bad])
-                                
+                                #if(w2>=w1 & w2 >=w3) 
+                                KSM[w1,w2,w3] <- KS_curves(oneV[(n.bad+1):n.sam],oneV[1:n.bad])
                         }
                 }
                 print(w1)
@@ -221,3 +237,264 @@ i=127
         
         which(KSM==max(KSM),arr.ind = TRUE)
         max(KSM)
+        aafit <- sapply(1:ncol(aa), function(i) weighted.mean(c(aa[1,i],aa[2,i],aa[3,i]),w=c(11,1,1),na.rm=TRUE) )
+        KS_curves(aafit[(n.bad+1):n.sam],aafit[1:n.bad],plot=TRUE)
+        
+        
+        #####===================================================
+        rm(list=ls())
+        gc()
+        source('D:/code/CreditCardTest/Credit_v0_1.R')
+        load("bb_onetrain")
+        n.sam=457
+        n.bad=130
+        
+        KSM <- array(0,dim=c(21,21))
+ 
+                for(w3 in 1:21){
+                        for(w2 in 1:21){
+                                oneV <- sapply(1:ncol(aa), function(i) weighted.mean(c(aa[2,i],aa[3,i]),w=c(w2,w3),na.rm=TRUE) )
+                                KSM[w2,w3] <- KS_curves(oneV[(n.bad+1):n.sam],oneV[1:n.bad])
+                        }
+                        ptint(w3)
+                }
+             
+        which(KSM==max(KSM),arr.ind = TRUE)
+        max(KSM)
+        
+        ####========================================================
+        rm(list=ls())
+        gc()
+        
+        source('D:/code/CreditCardTest/Credit_v0_1.R')
+        load("bb")
+        aa = bb
+        mode(aa) <- "numeric"
+        
+        n.sam=570
+        n.bad=23
+        
+        KSM <- array(0,dim=c(21,21,21))
+        for(w1 in 1:21){
+                for(w3 in 1:21){
+                        for(w2 in 1:21){
+                                oneV <- sapply(1:ncol(aa), function(i) weighted.mean(c(aa[1,i],aa[2,i],aa[3,i]),w=c(w1,w2,w3),na.rm=TRUE) )
+                                if(w2>=w1 & w2 >=w3) KSM[w1,w2,w3] <- KS_curves(oneV[(n.bad+1):n.sam],oneV[1:n.bad])
+                        }
+                }
+                print(w1)
+        }
+        
+        which(KSM==max(KSM),arr.ind = TRUE)
+        max(KSM)
+        
+        
+### 所有衍生指标和类标签的 相关性大小========================================
+n.bad <- 100
+n.sam <- 504
+labs <- c(rep(1,n.bad),rep(0,n.sam-n.bad))
+        
+yanshengS <- read.csv("衍生打分矩阵_2.csv")
+rownames(yanshengS) <- paste(yanshengS[,1],1:nrow(yanshengS),sep="_")
+yanshengS <- as.matrix(yanshengS[-(1:3),-1])
+mode(yanshengS) <- "numeric"
+
+corV <- 1:nrow(yanshengS)
+for(i in 1:nrow(yanshengS)) corV[i] <- cor(x=yanshengS[i,],y=labs, use="pairwise.complete.obs") 
+
+
+### 坏样本的新定义方法 =================================================================
+a<-read.csv('hk.csv',header=T)
+a[,24]<-as.numeric(a[,24])
+a[,25]<-as.numeric(a[,25])
+a[,27]<-as.numeric(a[,27])
+bad<-0
+bad[which(a[,24]>0|a[,25]>0)]<-1
+bad[which(a[,24]==0 & a[,25]<=3 & a[,27]<=30)]<-0
+b<-cbind(a,bad)
+b<-b[order(b[,3],-bad),c(1,3,24,25,27,88)]
+write.table(b,file="goodbad4.txt",quote=FALSE,col.names = FALSE, sep="\t")
+
+
+### 写到数据库表里
+tmp <- b
+library(RMySQL)
+library(DBI)
+con <- dbConnect(dbDriver("MySQL"),dbname="mathes_version3",user='etlmathes',password="yAUJ4c",host="172.16.2.244")
+dbRemoveTable(con,"zhonghang_samplelabels")
+dbWriteTable(con, "zhonghang_samplelabels", as.data.frame(tmp))
+dbDisconnect(con)
+
+
+### 所有样本写到数据库===============================================================
+samples <- read.xlsx2("数据样本0727-黄强4.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+samples <- samples[ ,1:60]
+sam0729Yi <- read.xlsx2("数据样本0729 - 移动全.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+sam0729Yi[sam0729Yi=="ERROR"] <- NA
+sam0729Lian <- read.xlsx2("数据样本0729 - 联通全.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+sam0729Lian[sam0729Lian=="ERROR"] <- NA
+samples <- rbind(samples,sam0729Yi,sam0729Lian)
+
+### 写到数据库表里
+tmp <- samples
+library(RMySQL)
+library(DBI)
+con <- dbConnect(dbDriver("MySQL"),dbname="mathes_version3",user='etlmathes',password="yAUJ4c",host="172.16.2.244")
+dbRemoveTable(con,"zhonghang_samples")
+dbWriteTable(con, "zhonghang_samples", as.data.frame(tmp))
+dbDisconnect(con)
+
+### 15 indexes  ============================================================================
+n.bad=100
+n.sam=504
+load("outputIndex504")
+mode(aa) <- "numeric"
+valM <- aa[c(4:8,10:14,16:20), ]
+valM <- t(valM)
+valM <- cbind(valM,c(rep(1,n.bad),rep(0,n.sam-n.bad)))
+colnames(valM)[1:15] <- paste(colnames(valM)[1:15],1:15,sep="_")
+colnames(valM)[16] <- "标签"
+
+tmp <- valM
+library(RMySQL)
+library(DBI)
+con <- dbConnect(dbDriver("MySQL"),dbname="mathes_version3",user='etlmathes',password="yAUJ4c",host="172.16.2.244")
+dbRemoveTable(con,"zhonghang_index15")
+dbWriteTable(con, "zhonghang_index15", as.data.frame(tmp))
+dbDisconnect(con)
+
+### test ctree method =============================
+
+rm(list=ls())
+gc()
+
+source('D:/code/CreditCardTest/Credit_v0_1.R')
+options(stringsAsFactors = TRUE)
+library(rpart)
+library(C50)
+library(adabag)
+library(rpart.plot)
+
+n.bad <- 100
+n.sam <- 504
+
+a1 <- as.matrix(read.csv("OldOutput/衍生指标矩阵_2.csv"))
+#a1 <- as.matrix(read.csv("OldOutput/衍生打分矩阵_2.csv"))
+a1 <- a1[-(1:3), -1]
+mode(a1) <- "numeric"
+
+#lab <- c(rep(0,n.bad),rep(1,n.sam-n.bad))
+#a1 <- cbind(lab, t(a1))
+#colnames(a1) <- c("lab", paste("X",1:(ncol(a1)-1),sep=""))
+
+#### boosting method
+lab <- c(rep("0",n.bad),rep("1",n.sam-n.bad))
+a1 <- data.frame(t(a1),lab)
+colnames(a1) <- c(paste("X",1:(ncol(a1)-1),sep=""),"Class")
+rownames(a1) <- 1:nrow(a1)
+
+adafit <- boosting(Class ~.,data=a1[c(1:75,101:300),], coeflearn="Zhu")
+pred <- predict(adafit,a1[c(76:100,301:504),-ncol(a1)])$prob[,2]
+KS_curves(pred[-(1:25)],pred[1:25],main="",plot=TRUE)
+KS_value(pred[-(1:25)],pred[1:25],plot=FALSE)
+        
+        
+#KS_curves(pred[(n.bad+1):n.sam],pred[1:n.bad],main="",plot=TRUE)
+
+#### rpart method
+# mfit <- rpart(lab~.,data=data.frame(a1))
+# #rpart.plot(mfit)
+# #summary(mfit)
+# pred <- predict(mfit,data.frame(a1[-1,]))
+# KS_curves(pred[(n.bad+1):n.sam],pred[1:n.bad],main="",plot=TRUE)
+
+#### C50 method
+# a1[is.na(a1)] <- "missing"
+# a1 <- a1[1:200, ]
+# C50fit <- C5.0(x = a1[,-1], y = as.factor(a1[,1]),control = C5.0Control(winnow = TRUE,subset=TRUE),trails=1)
+# pred <- predict(C50fit, a1[,-1], type="prob")
+# KS_curves(pred[(n.bad+1):200,2],pred[1:n.bad,2],main="",plot=TRUE)
+#all(rownames(a1)==rownames(pred))
+#a1 <- matrix(c(1,0.1,0.2,0.3,1,0.11,0.15,0.25,0,1,2,3,0,0.5,0.6,0.7,0,0.66,0.67,0.8),5,4,byrow=T)
+
+
+### 所有衍生字段表=====================================================
+jinrongziduan <- read.csv("金融画像衍生字段表_LY_0723_Chang.csv")
+jinrongziduan[,2] <- paste(jinrongziduan[,1],jinrongziduan[,2],sep="_")
+uniziduan <- jinrongziduan[!duplicated(jinrongziduan[,2]),2]
+uniziduan <- uniziduan[uniziduan!=""]
+
+## 金融画像近期字段得分映射
+jinrongziduan1 <- read.csv("金融画像衍生字段表_LY_0723_Duan.csv")
+jinrongziduan1[,2] <- paste(jinrongziduan1[,1],jinrongziduan1[,2],sep="_")
+uniziduan1 <- jinrongziduan1[!duplicated(jinrongziduan1[,2]),2]
+uniziduan1 <- uniziduan1[uniziduan1!=""]
+
+#航空字段的得分 
+hangkongziduan <- read.csv("航空数据衍生指标得分划分.csv",strip.white = TRUE)
+ziduan <- hangkongziduan[!duplicated(hangkongziduan[,1]),1]
+ziduan <- ziduan[ziduan!=""]
+
+ziduans <- c(uniziduan,uniziduan1,ziduan)
+write.csv(ziduans,file="所有衍生字段表.csv",quote=FALSE,row.names = FALSE)
+
+### 纠正身份证号码错误===========================================
+#D:\data\中行个人征信\中行个人征信共享\好样本0729\有盾数据样本_移动_0729.xlsx
+#D:\data\中行个人征信\中行个人征信共享\好样本0727\新样本有盾数据_银行卡信息0727.xlsx
+rm(list=ls())
+gc()
+library(xlsx)
+#source('D:/code/CreditCardTest/misc.R')
+
+readSample <- function(){
+        ### 读取所有可以的样本
+        samples <- read.xlsx2("数据样本0727-黄强4.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+        samples <- samples[ ,1:60]
+        sam0729Yi <- read.xlsx2("0729样本文件/数据样本0729 - 移动全.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+        sam0729Yi[sam0729Yi=="ERROR"] <- NA
+        sam0729Lian <- read.xlsx2("0729样本文件/数据样本0729 - 联通全.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+        sam0729Lian[sam0729Lian=="ERROR"] <- NA
+        samples <- rbind(samples,sam0729Yi,sam0729Lian)        
+        
+        samples
+}
+samples <- readSample()
+
+allsamples <- read.xlsx2("民生坏样本.xls",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+aone <- paste(allsamples[,1],allsamples[,3],sep="_")
+allsamples <- allsamples[!duplicated(aone), ]
+
+for(i in 1:nrow(samples)){
+        tmp <- allsamples[match(samples[i,1],allsamples[,1]),3]
+        if(is.na(tmp)) print(i)
+        samples[i,2] <- tmp
+}
+
+#which(duplicated(samples[,1]))
+
+##王霞
+samples[340,2] <- "620102720514502"
+samples[341,2] <- "511202197903010821"
+## 赵鹏飞
+samples[460,2] <- "371202197809130310"
+samples[461,2] <- "34212619790714053X"
+
+### 张华
+samples[489,2] <- "110106680426272"
+
+### 张伟
+samples[30,2] <- "420106197601260822"
+
+write.table(samples,file="zhonghang_samples559.txt",row.names = FALSE,quote=FALSE,sep="\t")
+
+library(DBI)
+library(RMySQL)
+conn <- dbConnect(MySQL(), 
+                  user="etlmathes",
+                  password="yAUJ4c",
+                  host="172.16.2.244",
+                  dbname="mathes_version3")
+dbRemoveTable(conn,"zhonghang_samples559")
+dbWriteTable(conn, "zhonghang_samples559",  as.data.frame(samples), row.names=FALSE)
+dbDisconnect(conn)
+
