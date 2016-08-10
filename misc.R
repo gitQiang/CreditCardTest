@@ -75,7 +75,7 @@ test <- function(samflag){
 
 }
 
-testmethods <- function(samflag){
+testmethods <- function(samflag,scoreflag=0,mystr="hq"){
         #### test different methods
         library(adabag)
         library(rpart)
@@ -97,7 +97,11 @@ testmethods <- function(samflag){
         cvlist <- sample.cross(n.sam,K)
         #save(cvlist,file="cvlist")
         #load("cvlist")
-        for(mflag in c(1:6,8:10)){
+        pVM <- c()
+        methodnames <- c("BruteForce","adaBoost","rpart","SVM","randomForest","randomForestCtree","glm","","adaBoostFilled","rpartFilled")
+        runMs <- c(2,5,9)
+        
+        for(mflag in runMs){
                 if(mflag==1){
                         aa <- as.matrix(read.csv(paste("OldOutput/样本输出矩阵_hq",samflag,".csv",sep="")))
                         aa <- aa[,-1]
@@ -126,8 +130,34 @@ testmethods <- function(samflag){
                 }
                 
                 print(mflag)
-                ks <- allmethods(x,y,mflag,n.bad,n.sam,cvlist,K,plot=TRUE,labs=c(1,0))
-                print(ks)
+                oner <- allmethods(x,y,mflag,n.bad,n.sam,cvlist,K,plot=TRUE,labs=c(1,0))
+                pVM <-  cbind(pVM,oner$pV)
+                print(oner$ks)
+        }
+        
+        
+        if(scoreflag > 0){
+                mode(pVM) <- "numeric"
+                tmp <- pVM
+                for(j in 1:ncol(pVM)){
+                        tmp[,j] <- rank(-as.numeric(pVM[,j]))
+                }
+                tmp <- tmp/nrow(tmp)
+                pVM <- cbind(pVM,tmp)
+                
+                aa <- as.matrix(read.csv(paste("OldOutput/样本输出矩阵_hq",samflag,".csv",sep="")))
+                aa <- t(aa)
+                aa <- aa[-1, ]
+                alabs <- paste(aa[,1],aa[,2],sep="_")
+                
+                bb <- read.csv("goodbad.csv")
+                blabs <- paste(bb[,1],bb[,2],sep="_")
+                newlab <- bb[match(alabs,blabs),'bad4']
+                
+                pVM <- cbind(aa[,1:2],y,newlab,pVM)
+                colnames(pVM) <- c("姓名","身份证号","标签","新的标签",methodnames[runMs],paste("topfraction",methodnames[runMs],sep="_"))
+                write.table(pVM,file=paste("OldOutput/Scores259_flag_",samflag,"_",mystr,".txt",sep=""),quote=FALSE,row.names = FALSE,sep="\t")
+                #return(pVM)
         }
         
 }
@@ -247,7 +277,8 @@ allmethods <- function(x,y,mflag,n.bad,n.sam,cvlist,K=4,plot=TRUE,labs=c(1,0)){
         
         options(stringsAsFactors = FALSE) ## mflag=2
         ks <- KS_value(pV[y==labs[1]], pV[y==labs[2]],plot=FALSE)
-        ks
+        
+        list(ks=ks,pV=pV)
 }
 
 SVMf <- function(x,y,K=4,plot=TRUE,labs=c(1,0)){
