@@ -83,6 +83,7 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
         library(randomForest)
         library(party)
         library(zoo)
+        source('D:/code/CreditCardTest/Credit_v0_1.R')
         
         nbads <- c(28,81)
         nsams <- c(420,540)
@@ -99,7 +100,7 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
         #load("cvlist")
         pVM <- c()
         methodnames <- c("BruteForce","adaBoost","rpart","SVM","randomForest","randomForestCtree","glm","","adaBoostFilled","rpartFilled")
-        runMs <- c(2,5,9)
+        runMs <- c(5)
         
         for(mflag in runMs){
                 if(mflag==1){
@@ -115,6 +116,7 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
                         yanshengM <- as.matrix(read.csv(paste("OldOutput/衍生指标矩阵_hq",samflag,".csv",sep="")))
                         tmp <- as.matrix(read.csv(paste("OldOutput/衍生打分矩阵_hq",samflag,".csv",sep="")))
                         yanshengM[c(9,10,37,73,102)-1, ] <- tmp[c(9,10,37,73,102)-1, ]
+                        addx <- yanshengM[1:3, -1]
                         yanshengM <- yanshengM[-(1:3), -1]
                         mode(yanshengM) <- "numeric"
                         x <- t(yanshengM)
@@ -122,7 +124,7 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
                         if(mflag>3){
                                 x[x==Inf] <- 9999999
                                 options(warn = -1)
-                                xyNew <- missingFill(x,y,flag=2)
+                                xyNew <- missingFill(x,y,flag=5,addx)
                                 xyNew <- as.matrix(xyNew)
                                 options(warn = 0)
                                 x <- xyNew[,-1]
@@ -535,7 +537,7 @@ sample.cross <- function(nsample,K){
         list(train=train_sample,pred=pred_sample)
 }
 
-missingFill <- function(x,y,flag=1){ 
+missingFill <- function(x,y,flag=1,addx=""){ 
         
         if(flag==1) return(rfImpute(x,y))
         if(flag==2){
@@ -551,7 +553,65 @@ missingFill <- function(x,y,flag=1){
                 }
                 return(cbind(y,x))
         }
+        
+        if(flag==4){
+                sexs <- sapply(1:ncol(addx), function(i) idcard_sex(addx[2,i]) )
+                
+                ages <- sapply(1:ncol(addx), function(i) idcard_age(addx[2,i]) )
+                ageG <- cbind(18:59, c(rep(1,12),rep(2:4,each=10)) )
+                xageg <- ages
+                xageg <- ageG[match(ages,ageG[,1]),2]
+                xageg[ages < 18] <- 0
+                xageg[ages >= 60] <- 5
+                groV <- paste(xageg,sexs,sep="_")
+                uniG <- unique(groV)
+                
+                for(k in 1:ncol(x)){
+                        for(j in uniG){
+                                x[groV==j, k] <- na.fill_hq(x[groV==j, k])
+                        }
+                        x[is.na(x[,k]), k] <-  median(x[!is.na(x[,k]), k])
+                }
+                return(cbind(y,x))  
+        }
+        
+        if(flag==5){
+                nasubs <- which(is.na(x), arr.ind = TRUE)
+                fillx <- sapply(1:nrow(nasubs), function(k) na.fill_hq1(nasubs[k,],x) )
+                x[cbind(nasubs[,1],nasubs[,1])] <- fillx
+                #for(k in 1:ncol(x)) x[is.na(x[,k]), k] <-  mean(x[!is.na(x[,k]), k])
+                return(cbind(y,x))  
+        }
+}
 
+na.fill_hq <- function(xx){
+        xx[is.na(xx)] <- median(xx[!is.na(xx)])
+        xx
+}
+
+na.fill_hq1 <- function(subs,x){
+        # step1 : chose samples
+        subs1 <- which(!is.na(x[,subs[2]]))
+        # step2 : chose index
+        subs2 <- which(!is.na(x[subs[1],]))
+        # step3 : normalize
+        xtmp <- x[subs1,subs2]
+        xtmp <- rbind(x[subs[1],subs2],xtmp)
+        xtmp <- sapply(1:ncol(xtmp), function(k) normalize_hq(xtmp[,k]) )
+        
+        # step4 : filled by nearest neighbor 
+        dV <- sapply(2:nrow(xtmp), function(k) dist_hq(xtmp[1,],xtmp[k,]))
+        fillsub <- subs1[which.min(dV)]
+        x[fillsub,subs[2]]
+}
+
+normalize_hq <- function(xx){
+        x1 <- xx[!is.na(xx)]
+        (xx-min(x1))/(max(x1)-min(x1))
+}
+
+dist_hq <- function(x1,x2){
+        sqrt(sum((x1-x2)^2))
 }
 
 ROCplot_hq <- function(score,y){

@@ -88,7 +88,7 @@ Credit_v0_1 <- function(fields0){
                 if(is.na(as.numeric(result1[ntmp])) | as.numeric(result1[ntmp]) <= XinYongCut){
                         ## 信用历史
                         result <- c(result1,"信用历史") #！！！！！
-                        result[c(73,1,127,ntmp)] <- 0
+                        result[c(73,1,127,ntmp)+3] <- 0
                 }else{
                         result <- c(result1,0)         
                 }
