@@ -218,15 +218,14 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         nleaf[2] <- n2
         nspe <- n2 + c(1,19,21)
         
-        if(is.na(fieldsHangkong[n+1]) | fieldsHangkong[n+1]==""){
-                fields1[n2+(1:26)] <- NA
-        }else{
-                fields1[n2+19] <- flight(fieldsHangkong[n+9])
+        #if(is.na(fieldsHangkong[n+1]) | fieldsHangkong[n+1]==""){
+        #        fields1[n2+(1:26)] <- NA
+        #}else{
+                fields1[n2+19] <- ifelse(is.na(fieldsHangkong[n+9]), NA, flight(fieldsHangkong[n+9]))
                 fields1[n2+20] <- idcard_age(shenfenzhengNUM)
                 fields1[n2+21] <- city(idcard(shenfenzhengNUM))
                 fields1[n2+23] <- lastflight(fieldsHangkong[n+18])
                 fields1[n2+c(1:5,24:26)] <- Hangkong_y1_5(fieldsHangkong[n+7], fieldsHangkong[n+8],shenfenzhengNUM) 
-                #nspe <- n2 + c(1,19,21)
                 
                 fields1[n2+6] <- as.numeric(fieldsHangkong[n+10])
                 fields1[n2+7] <- as.numeric(fieldsHangkong[n+11])
@@ -246,7 +245,7 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
                 tmp <- fields1[(n2+1):(n2+26)]
                 tmp[tmp==Inf] <- 9999999999
                 fields1[(n2+1):(n2+26)] <- tmp
-        }
+        #}
         
         
         nleaf[3] <- length(fields1)

@@ -100,7 +100,7 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
         #load("cvlist")
         pVM <- c()
         methodnames <- c("BruteForce","adaBoost","rpart","SVM","randomForest","randomForestCtree","glm","","adaBoostFilled","rpartFilled")
-        runMs <- c(5)
+        runMs <- c(2,5,9)
         
         for(mflag in runMs){
                 if(mflag==1){
@@ -122,12 +122,14 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
                         x <- t(yanshengM)
                         
                         if(mflag>3){
-                                x[x==Inf] <- 9999999
-                                options(warn = -1)
-                                xyNew <- missingFill(x,y,flag=5,addx)
-                                xyNew <- as.matrix(xyNew)
-                                options(warn = 0)
-                                x <- xyNew[,-1]
+                                if(samflag==1) load("OldOutput/filled_flag_1_5")
+                                if(samflag==2) load("OldOutput/filled_flag_2_5")
+                                # x[x==Inf] <- 9999
+                                # options(warn = -1)
+                                # xyNew <- missingFill(x,y,flag=5,addx)
+                                # xyNew <- as.matrix(xyNew)
+                                # options(warn = 0)
+                                # x <- xyNew[,-1]
                         }
                 }
                 
@@ -578,10 +580,17 @@ missingFill <- function(x,y,flag=1,addx=""){
         if(flag==5){
                 nasubs <- which(is.na(x), arr.ind = TRUE)
                 fillx <- sapply(1:nrow(nasubs), function(k) na.fill_hq1(nasubs[k,],x) )
-                x[cbind(nasubs[,1],nasubs[,1])] <- fillx
+                x[cbind(nasubs[,1],nasubs[,2])] <- fillx
                 #for(k in 1:ncol(x)) x[is.na(x[,k]), k] <-  mean(x[!is.na(x[,k]), k])
                 return(cbind(y,x))  
         }
+        
+        if(flag==6){
+                library(DMwR)  
+                x <- knnImputation(x,k=5)
+                return(cbind(y,x))
+        }
+
 }
 
 na.fill_hq <- function(xx){
@@ -594,20 +603,29 @@ na.fill_hq1 <- function(subs,x){
         subs1 <- which(!is.na(x[,subs[2]]))
         # step2 : chose index
         subs2 <- which(!is.na(x[subs[1],]))
-        # step3 : normalize
         xtmp <- x[subs1,subs2]
+        tmpsubs2 <- !(apply(xtmp,2,FUN = anyNA))
+        xtmp <- xtmp[ ,tmpsubs2]
+        subs2 <- subs2[tmpsubs2]
+        
+        # step3 : normalize
         xtmp <- rbind(x[subs[1],subs2],xtmp)
         xtmp <- sapply(1:ncol(xtmp), function(k) normalize_hq(xtmp[,k]) )
         
         # step4 : filled by nearest neighbor 
-        dV <- sapply(2:nrow(xtmp), function(k) dist_hq(xtmp[1,],xtmp[k,]))
+        dV <- sapply(2:nrow(xtmp), function(k) dist_hq(xtmp[1,],xtmp[k,]) )
         fillsub <- subs1[which.min(dV)]
-        x[fillsub,subs[2]]
+        as.numeric(x[fillsub,subs[2]])
 }
 
 normalize_hq <- function(xx){
+       
         x1 <- xx[!is.na(xx)]
-        (xx-min(x1))/(max(x1)-min(x1))
+        if(sd(x1)==0) {
+                xx
+        }else{
+                (xx-min(x1))/(max(x1)-min(x1))
+        }
 }
 
 dist_hq <- function(x1,x2){
