@@ -134,7 +134,7 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         fields1[n+19] <- fields0[n+9]/12
         fields1[n+20] <- (fields0[n+10]+fields0[n+17])/12
         fields1[n+21] <- (fields0[n+15]+fields0[n+4])/12
-        fields1[n+22] <- fields0[n+17]/fields0[n+16]
+        fields1[n+22] <- ifelse(fields0[n+16]==0, 0, fields0[n+17]/fields0[n+16])
         fields1[n+23] <- fields0[n+16]/12
         fields1[n+24] <- fields0[n+6]/12
         fields1[n+25] <- fields0[n+5]/12

@@ -452,7 +452,7 @@ readSample <- function(){
         samples <- samples[ ,1:60]
         sam0729Yi <- read.xlsx2("0729样本文件/数据样本0729 - 移动全.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
         sam0729Yi[sam0729Yi=="ERROR"] <- NA
-        sam0729Lian <- read.xlsx2("0729样本文件/数据样本0729 - 联通全.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
+        sam0729Lian <- read.xlsx2("好样本0729/数据样本0812 - 联通全.xlsx",1,as.data.frame = TRUE, header=TRUE, colClasses="character")
         sam0729Lian[sam0729Lian=="ERROR"] <- NA
         samples <- rbind(samples,sam0729Yi,sam0729Lian)        
         
@@ -494,7 +494,82 @@ conn <- dbConnect(MySQL(),
                   password="yAUJ4c",
                   host="172.16.2.244",
                   dbname="mathes_version3")
+dbSendQuery(conn,'SET NAMES GBK')
 dbRemoveTable(conn,"zhonghang_samples559")
 dbWriteTable(conn, "zhonghang_samples559",  as.data.frame(samples), row.names=FALSE)
 dbDisconnect(conn)
+
+### 输出所有人被一票否决导致打分很低的人名=============
+rm(list=ls())
+gc()
+setwd("D:/data/中行个人征信/中行个人征信共享")
+source('D:/code/CreditCardTest/misc.R')
+source('D:/code/CreditCardTest/Credit_v0_1.R')
+
+TESTONE <- function(fields0){
+        
+        ## 首先判断是否具有一票否决权
+        yipiaoFlag <- 0
+        personOne <- fields0[1:3]
+        shenfenzhengNUM <- personOne[2]
+        oneage <- idcard_age(shenfenzhengNUM)
+        siFainfo <- read.csv("个人司法查询.csv")
+        siFaNUM <- siFainfo[,2]
+        for(i in 1:nrow(siFainfo)) siFaNUM[i] <- substr(siFainfo[i,2],1,14)
+        XinYongCut <- 0
+        fields0 <- fields0[-(1:3)]
+        fields0[grepl("N/A",fields0)] <- NA
+        
+        ## only for test
+        fields1=rep(0,104)
+        scores1=rep(0,104)
+        ntmp <- 169
+        
+        if(oneage <= 18 | oneage>=60){
+                result <- c(personOne,rep(0,ntmp),"年龄")
+                yipiaoFlag <- 1
+        }else if( any(siFaNUM==substr(shenfenzhengNUM,1,14)) ){
+                tmpsub <- which(siFaNUM==substr(shenfenzhengNUM,1,14))
+                if(siFainfo[tmpsub,3]>0){
+                        ## 司法记录
+                        result <- c(personOne,rep(0,ntmp),"司法记录")
+                        yipiaoFlag <- 1
+                }
+        }
+        
+        if(yipiaoFlag==1){TRUE;}else{FALSE;}
+}
+
+
+samflag=2
+
+## 样本数据矩阵
+samples <- readSample()
+samtmp <- name_ID(samples[,1],samples[,2])
+
+##删除含有司法信息的好样本
+siFanames <- read.delim("涉及司法信息-0729.txt",sep='\t',header = TRUE)
+tmp <- name_ID(siFanames[,1],siFanames[,2])
+## 划分好坏样本
+samlab <- goodbadSample(flag=samflag) ### 好坏样本划分标准!!!!!
+labtmp <- name_ID(samlab[,1],samlab[,2])
+samlab <- samlab[!((labtmp %in% tmp) & samlab[,3]==0), ]
+labtmp <- name_ID(samlab[,1],samlab[,2])
+
+## 按照坏样本和好样本排序
+interSam <- intersect(samtmp,labtmp)
+interSam <- labtmp[labtmp %in% interSam]
+samples <- samples[match(interSam,samtmp), ]
+n.bad <- sum(samlab[labtmp %in% interSam,3] == 1)
+n.sam <- nrow(samples)
+
+tmp0 <- 1:nrow(samples)
+for(i in 1:nrow(samples)){
+        fields0 <- samples[i,]
+        tmp0[i]  <- TESTONE(fields0)
+}
+
+yipiaoS <- samples[which(tmp0==TRUE),1:3]
+write.table(yipiaoS,file="YipiaoSamples.txt",quote=FALSE,row.names = FALSE,sep = "\t")
+
 

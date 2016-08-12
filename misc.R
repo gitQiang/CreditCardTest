@@ -3,7 +3,6 @@ library(data.tree)
 ## only for test
 test <- function(samflag){
         
-        library(xlsx)
         setwd("D:/data/中行个人征信/中行个人征信共享")
         source('D:/code/CreditCardTest/Credit_v0_1.R')
         source('D:/code/CreditCardTest/misc.R')
@@ -122,11 +121,10 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
                         x <- t(yanshengM)
                         
                         if(mflag>3){
-                                if(samflag==1) load("OldOutput/filled_flag_1_5")
-                                if(samflag==2) load("OldOutput/filled_flag_2_5")
-                                # x[x==Inf] <- 9999
+                                x[x==Inf] <- 9999
+                                x[is.na(x)] <- 0
                                 # options(warn = -1)
-                                # xyNew <- missingFill(x,y,flag=5,addx)
+                                # xyNew <- missingFill(x,y,flag=4.5,addx)
                                 # xyNew <- as.matrix(xyNew)
                                 # options(warn = 0)
                                 # x <- xyNew[,-1]
@@ -576,6 +574,47 @@ missingFill <- function(x,y,flag=1,addx=""){
                 }
                 return(cbind(y,x))  
         }
+        
+        if(flag==4.5){
+                
+                sexs <- sapply(1:ncol(addx), function(i) idcard_sex(addx[2,i]) )
+                
+                ages <- sapply(1:ncol(addx), function(i) idcard_age(addx[2,i]) )
+                ageG <- cbind(18:59, c(rep(1,12),rep(2:4,each=10)) )
+                xageg <- ages
+                xageg <- ageG[match(ages,ageG[,1]),2]
+                xageg[ages < 18] <- 0
+                xageg[ages >= 60] <- 5
+                groV <- paste(xageg,sexs,sep="_")
+                uniG <- unique(groV)
+                
+                #匹配上一年龄段同性别
+                groV_up <- paste(xageg-1,sexs,sep="_")
+                uniG_up <- unique(groV_up)
+                u<-x
+                #匹配下一年龄段同性别
+                groV_dn <- paste(xageg+1,sexs,sep="_")
+                uniG_dn <- unique(groV_dn)
+                d<-x
+                
+                for(k in 1:ncol(x)){
+                        for(j in uniG)     x[groV==j, k] <- na.fill_hq(x[groV==j, k])
+                        for(j in uniG_up)  u[groV==j, k] <- na.fill_hq(u[groV==j, k])
+                        for(j in uniG_dn)  d[groV==j, k] <- na.fill_hq(d[groV==j, k])
+                        #u[is.na(u[,k]), k] <-  median(u[!is.na(u[,k]), k])
+                        #d[is.na(d[,k]), k] <-  median(d[!is.na(d[,k]), k])
+                        #匹配上一年龄段，最高段匹配结果NA
+                        #匹配下一年龄段，最低段匹配结果NA
+                        
+                        x[is.na(x[,k]),k] <-u[is.na(x[,k]), k]
+                        x[is.na(x[,k]),k] <-d[is.na(x[,k]), k]
+                        #若弄年龄段无数，用上一年龄段补，若仍无数，用下一年龄段补
+                        x[is.na(x[,k]), k] <-  median(x[!is.na(x[,k]), k])
+                }
+                return(cbind(y,x))  
+        }
+        
+        
         
         if(flag==5){
                 nasubs <- which(is.na(x), arr.ind = TRUE)
