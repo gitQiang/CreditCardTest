@@ -6,21 +6,15 @@
 #' Qiang Huang, Email: huangqiang@3golden.com.cn
 #'====================================================
 
-
-library(data.tree)
+#install.packages("randomForest",dependencies = TRUE)
+library(randomForest)
 
 ##=======================================================================================================================
-
+## this version is based on randomForest
 Creditf <- function(fields0){
         ## 输入原始字段：fields0; 
         ## 输出打分格式： 姓名 身份证号 手机号 金融画像打分近期6个数字（五个部分和一个综合打分） 金融画像打分远期6个数字（五个部分和一个综合打分） 飞行画像打分6个数（5部分和一个综合打分） 金融远期和飞行打分综合6个数 （五个部分和一个综合打分）
-        
-        
-        ### 最终确定的模型文件,load进来
-        load("")
-        
-        ## step 0: 由字符串解析出原始字段；
-        
+
         ## 首先判断是否具有一票否决权
         yipiaoFlag <- 0
         personOne <- fields0[1:3]
@@ -28,9 +22,11 @@ Creditf <- function(fields0){
         oneage <- idcard_age(shenfenzhengNUM)
         fields0 <- fields0[-(1:3)]
         fields0[grepl("N/A",fields0)] <- NA
+        ntmp <- 24
         
         if(oneage <= 18 | oneage>=60){
-                result <- c(personOne,rep(0,ntmp),"年龄")
+                #result <- c(personOne,rep(0,ntmp),"年龄")
+                result <- c(personOne,rep(0,ntmp))
                 yipiaoFlag <- 1
         }
         
@@ -67,13 +63,15 @@ Creditf <- function(fields0){
                 scores1 <- fields_scores(fields1,nleaf)
                 scores1 <- as.numeric(scores1)
                 scores1[nspe] <- fields1[nspe]
-                fields1[c(9,10,37,73,102)-4, ] <- scores1[c(9,10,37,73,102)-4, ] !!!!!
+                fields1[c(9,10,37,73,102)-4] <- scores1[c(9,10,37,73,102)-4]
         
                 ## step 3: 计算打分
-                scores <- credit_scores(fits1,fields1,nleaf)
+                fields1[is.na(fields1)] <- 0  ## filled NA
+                fields1[fields1==Inf] <- 9999  ## filled Inf
+                scores <- credit_scores(fields1,nleaf)
                 
                 ## step 4: Output
-                result <- unlist(c(personOne,scores))
+                result <- unlist(c(personOne,rep(0,ntmp-4),scores))
                
         }
         
@@ -115,7 +113,7 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         fields1[n+19] <- fields0[n+9]/12
         fields1[n+20] <- (fields0[n+10]+fields0[n+17])/12
         fields1[n+21] <- (fields0[n+15]+fields0[n+4])/12
-        fields1[n+22] <- fields0[n+17]/fields0[n+16]
+        fields1[n+22] <- ifelse(fields0[n+16]==0, 0, fields0[n+17]/fields0[n+16])
         fields1[n+23] <- fields0[n+16]/12
         fields1[n+24] <- fields0[n+6]/12
         fields1[n+25] <- fields0[n+5]/12
@@ -199,35 +197,34 @@ transform_fileds <- function(fields0, shenfenzhengNUM){
         nleaf[2] <- n2
         nspe <- n2 + c(1,19,21)
         
-        if(is.na(fieldsHangkong[n+1]) | fieldsHangkong[n+1]==""){
-                fields1[n2+(1:26)] <- NA
-        }else{
-                fields1[n2+19] <- flight(fieldsHangkong[n+9])
-                fields1[n2+20] <- idcard_age(shenfenzhengNUM)
-                fields1[n2+21] <- city(idcard(shenfenzhengNUM))
-                fields1[n2+23] <- lastflight(fieldsHangkong[n+18])
-                fields1[n2+c(1:5,24:26)] <- Hangkong_y1_5(fieldsHangkong[n+7], fieldsHangkong[n+8],shenfenzhengNUM) 
-                #nspe <- n2 + c(1,19,21)
-                
-                fields1[n2+6] <- as.numeric(fieldsHangkong[n+10])
-                fields1[n2+7] <- as.numeric(fieldsHangkong[n+11])
-                fields1[n2+8] <- as.numeric(fieldsHangkong[n+10])/as.numeric(fieldsHangkong[n+11])
-                fields1[n2+9] <- as.numeric(fieldsHangkong[n+1])
-                fields1[n2+10] <- as.numeric(fieldsHangkong[n+15])
-                fields1[n2+11] <- as.numeric(fieldsHangkong[n+15])/as.numeric(fieldsHangkong[n+1])
-                fields1[n2+12] <- as.numeric(fieldsHangkong[n+13])*as.numeric(fieldsHangkong[n+1])
-                fields1[n2+13] <- as.numeric(fieldsHangkong[n+13])
-                fields1[n2+14] <- as.numeric(fields1[n2+12])/as.numeric(fields1[n2+10])
-                fields1[n2+15] <- as.numeric(fieldsHangkong[n+4])
-                fields1[n2+16] <- as.numeric(fieldsHangkong[n+4]) + as.numeric(fieldsHangkong[n+5])
-                fields1[n2+17] <- as.numeric(fieldsHangkong[n+4])/as.numeric(fieldsHangkong[n+1])
-                fields1[n2+18] <- as.numeric(fields1[n2+16])/as.numeric(fieldsHangkong[n+1])
-                fields1[n2+22] <- as.numeric(fieldsHangkong[n+2])/as.numeric(fieldsHangkong[n+1])
-                
-                tmp <- fields1[(n2+1):(n2+26)]
-                tmp[tmp==Inf] <- 9999999999
-                fields1[(n2+1):(n2+26)] <- tmp
-        }
+        #if(is.na(fieldsHangkong[n+1]) | fieldsHangkong[n+1]==""){
+        #        fields1[n2+(1:26)] <- NA
+        #}else{
+        fields1[n2+19] <- ifelse(is.na(fieldsHangkong[n+9]), NA, flight(fieldsHangkong[n+9]))
+        fields1[n2+20] <- idcard_age(shenfenzhengNUM)
+        fields1[n2+21] <- city(idcard(shenfenzhengNUM))
+        fields1[n2+23] <- lastflight(fieldsHangkong[n+18])
+        fields1[n2+c(1:5,24:26)] <- Hangkong_y1_5(fieldsHangkong[n+7], fieldsHangkong[n+8],shenfenzhengNUM) 
+        
+        fields1[n2+6] <- as.numeric(fieldsHangkong[n+10])
+        fields1[n2+7] <- as.numeric(fieldsHangkong[n+11])
+        fields1[n2+8] <- as.numeric(fieldsHangkong[n+10])/as.numeric(fieldsHangkong[n+11])
+        fields1[n2+9] <- as.numeric(fieldsHangkong[n+1])
+        fields1[n2+10] <- as.numeric(fieldsHangkong[n+15])
+        fields1[n2+11] <- as.numeric(fieldsHangkong[n+15])/as.numeric(fieldsHangkong[n+1])
+        fields1[n2+12] <- as.numeric(fieldsHangkong[n+13])*as.numeric(fieldsHangkong[n+1])
+        fields1[n2+13] <- as.numeric(fieldsHangkong[n+13])
+        fields1[n2+14] <- as.numeric(fields1[n2+12])/as.numeric(fields1[n2+10])
+        fields1[n2+15] <- as.numeric(fieldsHangkong[n+4])
+        fields1[n2+16] <- as.numeric(fieldsHangkong[n+4]) + as.numeric(fieldsHangkong[n+5])
+        fields1[n2+17] <- as.numeric(fieldsHangkong[n+4])/as.numeric(fieldsHangkong[n+1])
+        fields1[n2+18] <- as.numeric(fields1[n2+16])/as.numeric(fieldsHangkong[n+1])
+        fields1[n2+22] <- as.numeric(fieldsHangkong[n+2])/as.numeric(fieldsHangkong[n+1])
+        
+        tmp <- fields1[(n2+1):(n2+26)]
+        tmp[tmp==Inf] <- 9999999999
+        fields1[(n2+1):(n2+26)] <- tmp
+        #}
         
         
         nleaf[3] <- length(fields1)
@@ -365,26 +362,58 @@ getScores <- function(f,breaksL,flag=1){
         f1
 }
 
-credit_scores <- function(fits1,fields1,nleaf){
-        fit1 <- fits1$fit1
-        fit2 <- fits1$fit2
-        fit3 <- fits1$fit3
-        fit4 <- fits1$fit4
+credit_scores <- function(fields1,nleaf){
         
-        colnames(fields1) <- paste("X",1:length(fields1),sep="") #!!!!!
-        result <- 1:4
-        result[1] <- predict(fit1,data.frame(fields1)[ 1:nleaf[1] ])$prob[,2]
-        result[2] <- predict(fit2,data.frame(fields1)[ (nleaf[1]+1):nleaf[2] ])$prob[,2]
-        result[3] <- predict(fit3,data.frame(fields1)[ (nleaf[2]+1):nleaf[3] ])$prob[,2]
-        result[4] <- predict(fit4,data.frame(fields1))$prob[,2]
+        xy <- readxy()
+        y <- xy[,1]
+        x <- xy[,-1]
         
-        # preModel <- predict(adafit,newdata)$prob[,2] ## method=2 and method=9
-        # preModel <- predict(fit,as.data.frame(newdata),type="prob")[,2] ## method=5
-
+        nleaf <- c(0,nleaf)
+        result <- rep(0,4)
+        #for(i in 1:4){
+                #if(i<=3) n <- (nleaf[i]+1):nleaf[i+1]
+                #if(i==4) n <- 1:nleaf[4]
+                i=4
+                n <- 1:nleaf[4]
+                xt <- x[,n]
+                yt <- y
+                newdata <- matrix(fields1[n],nrow = 1)
+                
+                a1 <- data.frame(xt,yt)
+                colnames(a1) <- c(paste("X",1:(ncol(a1)-1),sep=""),"Class")
+                rownames(a1) <- 1:nrow(a1)
+                fit <- randomForest(x=a1[,1:(ncol(a1)-1)],y=as.factor(a1[,"Class"]))
+                colnames(newdata) <- paste("X",1:(ncol(a1)-1),sep="")
+                result[i] <- predict(fit,as.data.frame(newdata),type="prob")[,2]
+        #}
+        
         result  
 }
 
 #### pieces of functions to deal with raw fields0 with text
+
+readxy <- function(samflag=2){
+                
+        nbads <- c(28,81)
+        nsams <- c(420,540)
+        n.sam <- nsams[samflag]
+        n.bad <- nbads[samflag]
+        
+        labs=c(1,0)
+        y <- c(rep(labs[2],n.bad),rep(labs[1],n.sam-n.bad))
+        
+        yanshengM <- as.matrix(read.csv(paste("衍生指标矩阵_hq",samflag,".csv",sep="")))
+        tmp <- as.matrix(read.csv(paste("衍生打分矩阵_hq",samflag,".csv",sep="")))
+        yanshengM[c(9,10,37,73,102)-1, ] <- tmp[c(9,10,37,73,102)-1, ]
+        yanshengM <- yanshengM[-(1:3), -1]
+        mode(yanshengM) <- "numeric"
+        x <- t(yanshengM)
+        
+        x[x==Inf] <- 9999
+        x[is.na(x)] <- 0
+        
+        cbind(y,x)
+}
 
 flight <- function(s){
         f<-substring(s,1,1)

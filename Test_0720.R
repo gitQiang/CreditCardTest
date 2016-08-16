@@ -572,4 +572,85 @@ for(i in 1:nrow(samples)){
 yipiaoS <- samples[which(tmp0==TRUE),1:3]
 write.table(yipiaoS,file="YipiaoSamples.txt",quote=FALSE,row.names = FALSE,sep = "\t")
 
+### randomForest and adaBoost consistent==============================
+filenames <- list.files("OldOutput/","Scores259_flag_2")
+for(i in 1:length(filenames)){
+        aa <- read.delim(paste("OldOutput/",filenames[i],sep=""))
+        plot(aa[,6],aa[,7],xlim=c(0,1),ylim=c(0,1),xlab="randomForest",ylab="adaBoostFilled")
+        subs <- which(aa[,3]==0)
+        lines(aa[subs,6],aa[subs,7],col="red",lwd=2,type="p")
+        reg1 <- lm(aa[,7]~aa[,6])
+        abline(reg1,lwd=2,col="blue")
+        legend("topleft",c("good","bad"),col=1:2,lwd=1:2)
+        
+        #lines(lowess(aa[,6],aa[,7]), col="red",lwd=2)
+        print(cor(aa[,6],aa[,7]))
+        #abline(-0.1,1,col=2,lty=2)
+        #abline(0.1,1,col=2,lty=2)
+        #abline(0,1,col=1,lwd=2,lty=2)
+}
+
+filenames <- list.files("OldOutput/","Scores259_flag_2")
+for(i in 1:length(filenames)){
+        aa <- read.delim(paste("OldOutput/",filenames[i],sep=""))
+        r1 <- rank(-aa[,6])
+        r2 <- rank(-aa[,7])
+        plot(r1,r2,xlim=c(0,nrow(aa)),ylim=c(0,nrow(aa)),xlab="randomForest",ylab="adaBoostFilled")
+        subs <- which(aa[,3]==0)
+        lines(r1[subs],r2[subs],col="red",lwd=2,type="p")
+        
+        subs <- which(abs(r1-r2)>200)
+        lines(r1[subs],r2[subs],col="skyblue",lwd=1,type="p")
+        
+        subs <- which(abs(r1-r2)<=200 & abs(r1-r2)>100)
+        lines(r1[subs],r2[subs],col="steelblue",lwd=1,type="p")
+        
+        abline(-100,1,col=2,lty=2)
+        abline(100,1,col=2,lty=2)
+        abline(-200,1,col=2,lty=2)
+        abline(200,1,col=2,lty=2)
+        abline(0,1,col=1,lwd=2,lty=2)
+        legend("topleft",c("good","bad"),col=1:2,lwd=1:2)
+        
+        print(sum(abs(r1-r2)>200))
+}
+
+
+
+filenames <- list.files("OldOutput/","Scores259_flag_1")
+for(i in 1:length(filenames)){
+        aa <- read.delim(paste("OldOutput/",filenames[i],sep=""))
+        plot(aa[,9],aa[,10],xlim=c(0,1),ylim=c(0,1),xlab="randomForest",ylab="adaBoostFilled")
+        subs <- which(aa[,3]==0)
+        lines(aa[subs,9],aa[subs,10],col="red",lwd=2,type="p")
+        reg1 <- lm(aa[,10]~aa[,9])
+        abline(reg1,lwd=2,col="blue")
+        legend("topleft",c("good","bad"),col=1:2,lwd=1:2)
+}
+
+filenames <- list.files("OldOutput/","Scores259_flag_2")
+
+        aa <- read.delim(paste("OldOutput/",filenames[4],sep=""))
+        aa1 <- read.delim(paste("OldOutput/",filenames[2],sep=""))
+        
+        r1 <- rank(-aa[,7])
+        r2 <- rank(-aa1[,7])
+        plot(r1,r2,xlim=c(0,nrow(aa)),ylim=c(0,nrow(aa)),xlab="adaBoostFilled",ylab="adaBoostFilled")
+        subs <- which(aa[,3]==0)
+        lines(r1[subs],r2[subs],col="red",lwd=2,type="p")
+        
+        subs <- which(abs(r1-r2)>200)
+        lines(r1[subs],r2[subs],col="skyblue",lwd=1,type="p")
+        
+        subs <- which(abs(r1-r2)<=200 & abs(r1-r2)>100)
+        lines(r1[subs],r2[subs],col="steelblue",lwd=1,type="p")
+        
+        abline(-100,1,col=2,lty=2)
+        abline(100,1,col=2,lty=2)
+        abline(-200,1,col=2,lty=2)
+        abline(200,1,col=2,lty=2)
+        abline(0,1,col=1,lwd=2,lty=2)
+        legend("topleft",c("good","bad"),col=1:2,lwd=1:2)
+        
+
 
