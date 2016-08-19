@@ -22,6 +22,7 @@ Creditf <- function(fields0){
         oneage <- idcard_age(shenfenzhengNUM)
         fields0 <- fields0[-(1:3)]
         fields0[grepl("N/A",fields0)] <- NA
+        fields0[grepl("NA",fields0)] <- NA
         ntmp <- 24
         
         if(oneage <= 18 | oneage>=60){
