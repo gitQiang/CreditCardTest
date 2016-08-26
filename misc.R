@@ -98,8 +98,8 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
         #save(cvlist,file="cvlist")
         #load("cvlist")
         pVM <- c()
-        methodnames <- c("BruteForce","adaBoost","rpart","SVM","randomForest","randomForestCtree","glm","","adaBoostFilled","rpartFilled")
-        runMs <- c(2,5,9)
+        methodnames <- c("BruteForce","adaBoost","rpart","SVM","randomForest","randomForestCtree","xgboost","glm","adaBoostFilled","rpartFilled")
+        runMs <- c(5,7)
         
         for(mflag in runMs){
                 if(mflag==1){
@@ -258,10 +258,12 @@ allmethods <- function(x,y,mflag,n.bad,n.sam,cvlist,K=4,plot=TRUE,labs=c(1,0)){
                         preModel <- unlist(preModel)
                 }
                 
-                # if(mflag==7){
-                #         fit <- mob(Class ~.,data=a1,model=glinearModel,family=binomial())
-                # }
-                
+                if(mflag==7){
+                        library(xgboost)
+                        fit <- xgboost(data = as.matrix(xt), label = yt, max.depth = 5, eta = 1, nthread = 5, nround = 200, objective = "binary:logistic", verbose = 0)
+                        preModel <- predict(fit,as.matrix(newdata))
+                        ##fit <- mob(Class ~.,data=a1,model=glinearModel,family=binomial())
+                }
                 
                 if(mflag==8){
                         fit <- glm(Class ~.,data=a1,family=binomial())
@@ -282,204 +284,6 @@ allmethods <- function(x,y,mflag,n.bad,n.sam,cvlist,K=4,plot=TRUE,labs=c(1,0)){
         
         list(ks=ks,pV=pV)
 }
-
-SVMf <- function(x,y,K=4,plot=TRUE,labs=c(1,0)){
-        ### SVM
-        library(e1071)
-        
-        n.sam <- nrow(x)
-        cvlist <- sample.cross(n.sam,K)
-        pV <- 1:n.sam
-        
-        for(i in 1:K){
-                trainsub <- cvlist$train[[i]]
-                xt <- x[trainsub, ]
-                yt <- y[trainsub]
-                model <- svm(xt,yt)    
-
-                # test:
-                predisub <- cvlist$pred[[i]]
-                newdata <- x[predisub, ]
-                preModel <- predict (model, newdata)
-                pV[predisub] <- preModel
-        }
-        
-        if(plot){
-                KS_curves(pV[y==labs[1]], pV[y==labs[2]],main="",plot=plot)
-                ROCplot_hq(pV,y)
-        }
-        
-        ks <- KS_value(pV[y==labs[1]], pV[y==labs[2]],plot=FALSE)
-        ks
-}
-
-adaBoostf <- function(x,y,K=4,plot=TRUE,labs=c(1,0)){
-        ### adaBoost
-        library(adabag)
-        library(rpart)
-        options(stringsAsFactors = TRUE)
-        labs <- as.character(labs)
-        y <- as.character(y)
-        
-        n.sam <- nrow(x)
-        cvlist <- sample.cross(n.sam,K)
-        pV <- 1:n.sam
-        
-        for(i in 1:K){
-                #### boosting method
-                trainsub <- cvlist$train[[i]]
-                xt <- x[trainsub, ]
-                yt <- y[trainsub]
-                
-                a1 <- data.frame(xt,yt)
-                colnames(a1) <- c(paste("X",1:(ncol(a1)-1),sep=""),"Class")
-                rownames(a1) <- 1:nrow(a1)
-                
-                adafit <- boosting(Class ~.,data=a1, coeflearn="Zhu")
-                #adafit <- boosting.cv(Class ~.,data=a1, coeflearn="Zhu")
-                
-                # test:
-                predisub <- cvlist$pred[[i]]
-                newdata <- x[predisub, ]
-                preModel <- predict(adafit,newdata)$prob[,2]
-                pV[predisub] <- preModel
-        }
-        
-        if(plot){
-                KS_curves(pV[y==labs[1]], pV[y==labs[2]],main="",plot=plot)
-                ROCplot_hq(pV,y)
-        }
-        
-        ks <- KS_value(pV[y==labs[1]], pV[y==labs[2]],plot=FALSE)
-        ks
-}
-
-# randomForest methods: default, ctree
-RFsf <- function(x,y,K=4,plot=TRUE,labs=c(1,0),mflag=1){
-        
-        library(randomForest)
-        library(party)
-        
-        n.sam <- nrow(x)
-        cvlist <- sample.cross(n.sam,K)
-        pV <- 1:n.sam
-        
-        for(i in 1:K){
-                trainsub <- cvlist$train[[i]]
-                xt <- x[trainsub, ]
-                yt <- y[trainsub]
-                
-                a1 <- data.frame(xt,yt)
-                colnames(a1) <- c(paste("X",1:(ncol(a1)-1),sep=""),"Class")
-                rownames(a1) <- 1:nrow(a1)
-                
-                
-                predisub <- cvlist$pred[[i]]
-                newdata <- x[predisub, ]
-                colnames(newdata) <- paste("X",1:(ncol(a1)-1),sep="")
-                
-                if(mflag==1){
-                        fit <- randomForest(x=a1[,1:(ncol(a1)-1)],y=as.factor(a1[,"Class"])) ### RandomForest method
-                        preModel <- predict(fit,as.data.frame(newdata),type="prob")[,2]
-                }
-                
-                if(mflag==2){ # randomForest method with ctree
-                        fit <- cforest(Class ~., data = a1)
-                        preModel <- predict(fit,newdata=as.data.frame(newdata),type="prob", OOB=TRUE)
-                        names(preModel) <- NULL
-                        preModel <- unlist(preModel)
-                }
-                
-                if(mflag==3){
-                        fit <- mob(Class ~.,data=a1,model=glinearModel,family=binomial())
-                }
-                
-                pV[predisub] <- preModel
-        }
-        
-        if(plot){
-                KS_curves(pV[y==labs[1]], pV[y==labs[2]],main="",plot=plot)
-                ROCplot_hq(pV,y)
-        }
-        
-        ks <- KS_value(pV[y==labs[1]], pV[y==labs[2]],plot=FALSE)
-        ks
-}
-
-# rpart
-rpartf <- function(x,y,K=4,plot=TRUE,labs=c(1,0)){
-        
-        library(rpart)
-        
-        n.sam <- nrow(x)
-        cvlist <- sample.cross(n.sam,K)
-        pV <- 1:n.sam
-        
-        for(i in 1:K){
-                #### rpart
-                trainsub <- cvlist$train[[i]]
-                xt <- x[trainsub, ]
-                yt <- y[trainsub]
-                
-                a1 <- cbind(xt,yt)
-                colnames(a1) <- c(paste("X",1:(ncol(a1)-1),sep=""),"Class")
-                rownames(a1) <- 1:nrow(a1)
-
-                fit <- rpart(Class ~.,data=as.data.frame(a1))
-          
-                predisub <- cvlist$pred[[i]]
-                newdata <- x[predisub, ]
-                colnames(newdata) <- paste("X",1:(ncol(a1)-1),sep="")
-                preModel <- predict(fit, newdata=as.data.frame(newdata))
-                #print(preModel)
-                pV[predisub] <- preModel
-        }
-        
-        if(plot){
-                KS_curves(pV[y==labs[1]], pV[y==labs[2]],main="",plot=plot)
-                ROCplot_hq(pV,y)
-        }
-        
-        ks <- KS_value(pV[y==labs[1]], pV[y==labs[2]],plot=FALSE)
-        ks
-}
-
-# logistic
-glmf <- function(x,y,K=4,plot=TRUE,labs=c(1,0)){
-        n.sam <- nrow(x)
-        cvlist <- sample.cross(n.sam,K)
-        pV <- 1:n.sam
-        
-        for(i in 1:K){
-                #### rpart
-                trainsub <- cvlist$train[[i]]
-                xt <- x[trainsub, ]
-                yt <- y[trainsub]
-                
-                a1 <- data.frame(xt,yt)
-                colnames(a1) <- c(paste("X",1:(ncol(a1)-1),sep=""),"Class")
-                rownames(a1) <- 1:nrow(a1)
-                
-                fit <- glm(Class ~.,data=a1,family=binomial())
-                
-                predisub <- cvlist$pred[[i]]
-                newdata <- x[predisub, ]
-                colnames(newdata) <- paste("X",1:(ncol(a1)-1),sep="")
-                preModel <- predict(fit,as.data.frame(newdata))
-                pV[predisub] <- preModel
-        }
-        
-        if(plot){
-                KS_curves(pV[y==labs[1]], pV[y==labs[2]],main="",plot=plot)
-                ROCplot_hq(pV,y)
-        }
-        
-        ks <- KS_value(pV[y==labs[1]], pV[y==labs[2]],plot=FALSE)
-        ks        
-}
-
-# RandomForest based logistic
-RFglmf <- function(x,y,K=4,plot=TRUE,labs=c(1,0)){ }
 
 ###============================================================
 readSample <- function(){
@@ -720,61 +524,4 @@ KS_value <- function(goodV,badV,plot=FALSE){
         if(plot) plot(perf)
         max(attr(perf,'y.values')[[1]]-attr(perf,'x.values')[[1]])
 }
-
-
-### discard function ====================================
-
-Credit_v0_1_test <- function(fields0,trees1,scores1,nleaf,w3){
-        
-        ## step 0: 由字符串解析出原始字段； 函数： ；原始字段表见文件：
-        
-        ## 首先判断是否具有一票否决权
-        yipiaoFlag <- 0
-        personOne <- fields0[1:3]
-        shenfenzhengNUM <- personOne[2]
-        oneage <- idcard_age(shenfenzhengNUM)
-        siFainfo <- read.csv("个人司法查询.csv")
-        siFaNUM <- siFainfo[,2]
-        for(i in 1:nrow(siFainfo)) siFaNUM[i] <- substr(siFainfo[i,2],1,14)
-        XinYongCut <- 0
-        fields0 <- fields0[-(1:3)]
-        fields0[grepl("N/A",fields0)] <- NA
-        
-        ## only for test
-        fields1=rep(0,100)
-        scores1=rep(0,100)
-        
-        if(oneage <= 18 | oneage>=60){
-                result <- c(personOne,rep(0,165),"年龄")
-                yipiaoFlag <- 1
-        }else if( any(siFaNUM==substr(shenfenzhengNUM,1,14)) ){
-                tmpsub <- which(siFaNUM==substr(shenfenzhengNUM,1,14))
-                if(siFainfo[tmpsub,3]>0){
-                        ## 司法记录
-                        result <- c(personOne,rep(0,165),"司法记录")
-                        yipiaoFlag <- 1
-                }
-        }
-        
-        if(yipiaoFlag == 0){
-                ## step 4: 计算每一个层次的打分，并获得最终输出打分； 函数：credit_scores;
-                scores <- credit_scores(trees1,scores1,nleaf,w3)
-                
-                ## step 5: Output
-                result1 <- unlist(c(personOne,scores))
-                
-                #!!!!! 24 sub only for test
-                if(is.na(as.numeric(result1[165])) | as.numeric(result1[165]) <= XinYongCut){
-                        ## 信用历史
-                        result <- c(result1,"信用历史") #！！！！！
-                        result[c(71,1,123,165)+3] <- 0
-                }else{
-                        result <- c(result1,0)         
-                }
-        }
-        
-        
-        list(result=result,fields0=fields0, fields1=fields1,scores1=scores1)
-}
-
 
