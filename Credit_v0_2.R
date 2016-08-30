@@ -23,6 +23,8 @@ Creditf <- function(fields0){
         fields0 <- fields0[-(1:3)]
         fields0[grepl("N/A",fields0)] <- NA
         fields0[grepl("NA",fields0)] <- NA
+        fields0[grepl("null",fields0)] <- NA
+        fields0[grepl("δ֪",fields0)] <- NA
         ntmp <- 24
         
         if(oneage <= 18 | oneage>=60){

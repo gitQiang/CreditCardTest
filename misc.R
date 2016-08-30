@@ -84,8 +84,8 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
         library(zoo)
         source('D:/code/CreditCardTest/Credit_v0_1.R')
         
-        nbads <- c(28,81)
-        nsams <- c(420,540)
+        nbads <- c(28+18,81+18)
+        nsams <- c(420+18,540+18)
         
         n.sam <- nsams[samflag]
         n.bad <- nbads[samflag]
@@ -94,12 +94,11 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
         
         
         K=4
-        cvlist <- sample.cross(n.sam,K)
-        #save(cvlist,file="cvlist")
-        #load("cvlist")
+        cvlist <- sample.cross_split(K,n.bad,n.sam)
+        #cvlist <- sample.cross(n.sam,K)
         pVM <- c()
         methodnames <- c("BruteForce","adaBoost","rpart","SVM","randomForest","randomForestCtree","xgboost","glm","adaBoostFilled","rpartFilled")
-        runMs <- c(5,7)
+        runMs <- c(2,5,7,9)
         
         for(mflag in runMs){
                 if(mflag==1){
@@ -287,7 +286,7 @@ allmethods <- function(x,y,mflag,n.bad,n.sam,cvlist,K=4,plot=TRUE,labs=c(1,0)){
 
 ###============================================================
 readSample <- function(){
-        samples <- read.delim("zhonghang_samples559.txt",header = TRUE,sep = "\t")
+        samples <- read.delim("zhonghang_samples577.txt",header = TRUE,sep = "\t")
         samples
 }
 
@@ -317,6 +316,13 @@ goodbadSample <- function(flag=1){
         c <- c[order(-c[,3]), ]
         c <- c[!duplicated(paste(c[,1],c[,2],sep="_")),  ]
         
+        #new 18 samples
+        c1 <- read.delim("zhonghang_sample_label_18.txt",header = FALSE)
+        colnames(c1) <- colnames(c)
+        c <- rbind(c1,c)
+        
+        c <- c[order(-c[,3]), ]
+        
         c
 }
 
@@ -339,6 +345,22 @@ sample.cross <- function(nsample,K){
         
         
         list(train=train_sample,pred=pred_sample)
+}
+
+sample.cross_split <- function(K,n.bad,n.sam){
+        
+        train <- list()
+        pred <- list()
+        
+        list1 <- sample.cross(n.bad,K)
+        list2 <- sample.cross(n.sam-n.bad,K)
+        
+        for(i in 1:K){
+                train[[i]] <- c(list1$train[[i]], list2$train[[i]]+n.bad)
+                pred[[i]] <- c(list1$pred[[i]], list2$pred[[i]]+n.bad)
+        }
+        
+        list(train=train,pred=pred)
 }
 
 missingFill <- function(x,y,flag=1,addx=""){ 
@@ -484,7 +506,8 @@ ROCplot_hq <- function(score,y){
 }
 
 name_ID <- function(name,id){
-        sapply(1:length(name), function(i) paste(name[i], substr(id[i],1,14),sep="_") )
+        #sapply(1:length(name), function(i) paste(name[i], substr(id[i],1,14),sep="_") )
+        paste(name, id,sep="_")
 }
 
 KS_curves <- function(goodV,badV,main="",plot=FALSE){
