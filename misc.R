@@ -97,8 +97,9 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
         cvlist <- sample.cross_split(K,n.bad,n.sam)
         #cvlist <- sample.cross(n.sam,K)
         pVM <- c()
-        methodnames <- c("BruteForce","adaBoost","rpart","SVM","randomForest","randomForestCtree","xgboost","glm","adaBoostFilled","rpartFilled")
-        runMs <- c(2,5,7,9)
+        ksV <- c()
+        methodnames <- c("BruteForce","adaBoost","rpart","SVM","randomForest","randomForestCtree","xgboost","glm","adaBoostFilled","rpartFilled","merge_adaBoost","merge_RF","weighteds")
+        runMs <- c(1,5,6,9)
         
         for(mflag in runMs){
                 if(mflag==1){
@@ -133,9 +134,33 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
                 print(mflag)
                 oner <- allmethods(x,y,mflag,n.bad,n.sam,cvlist,K,plot=TRUE,labs=c(1,0))
                 pVM <-  cbind(pVM,oner$pV)
+                ksV <- c(ksV,oner$ks)
                 print(oner$ks)
         }
         
+        #### merge methods
+        nm <- 1:ncol(pVM)
+        # print(11)
+        # oner <- allmethods(pVM[,nm],y,mflag=9,n.bad,n.sam,cvlist,K,plot=TRUE,labs=c(1,0))
+        # print(oner$ks)
+        # pVM <- cbind(pVM,oner$pV)
+        # 
+        # print(12)
+        # oner <- allmethods(pVM[,nm],y,mflag=5,n.bad,n.sam,cvlist,K,plot=TRUE,labs=c(1,0))
+        # print(oner$ks)
+        # pVM <- cbind(pVM,oner$pV)
+        
+        print(13)
+        oner <- list()
+        ws <- 0.5*log(ksV/(1-ksV))
+        oner$pV <- sapply(1:nrow(pVM), function(ix) weighted.mean(pVM[ix,nm],ws))
+        oner$pV <- oner$pV/max(oner$pV)
+        oner$ks <- KS_value(oner$pV[y==labs[1]], oner$pV[y==labs[2]],plot=FALSE)
+        print(oner$ks)
+        pVM <- cbind(pVM,oner$pV)
+        
+        
+        runMs <- c(runMs,13)   
         
         if(scoreflag > 0){
                 mode(pVM) <- "numeric"
