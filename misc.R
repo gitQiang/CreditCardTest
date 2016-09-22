@@ -99,7 +99,7 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
         pVM <- c()
         ksV <- c()
         methodnames <- c("BruteForce","adaBoost","rpart","SVM","randomForest","randomForestCtree","xgboost","glm","adaBoostFilled","rpartFilled","merge_adaBoost","merge_RF","weighteds")
-        runMs <- c(1,5,6,9)
+        runMs <- 1:10 #c(1,5,6,9)
         
         for(mflag in runMs){
                 if(mflag==1){
@@ -140,15 +140,15 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
         
         #### merge methods
         nm <- 1:ncol(pVM)
-        # print(11)
-        # oner <- allmethods(pVM[,nm],y,mflag=9,n.bad,n.sam,cvlist,K,plot=TRUE,labs=c(1,0))
-        # print(oner$ks)
-        # pVM <- cbind(pVM,oner$pV)
-        # 
-        # print(12)
-        # oner <- allmethods(pVM[,nm],y,mflag=5,n.bad,n.sam,cvlist,K,plot=TRUE,labs=c(1,0))
-        # print(oner$ks)
-        # pVM <- cbind(pVM,oner$pV)
+        print(11)
+        oner <- allmethods(pVM[,nm],y,mflag=9,n.bad,n.sam,cvlist,K,plot=TRUE,labs=c(1,0))
+        print(oner$ks)
+        pVM <- cbind(pVM,oner$pV)
+
+        print(12)
+        oner <- allmethods(pVM[,nm],y,mflag=5,n.bad,n.sam,cvlist,K,plot=TRUE,labs=c(1,0))
+        print(oner$ks)
+        pVM <- cbind(pVM,oner$pV)
         
         print(13)
         oner <- list()
@@ -160,7 +160,7 @@ testmethods <- function(samflag,scoreflag=0,mystr="hq"){
         pVM <- cbind(pVM,oner$pV)
         
         
-        runMs <- c(runMs,13)   
+        runMs <- c(runMs,11,12,13)   
         
         if(scoreflag > 0){
                 mode(pVM) <- "numeric"
@@ -525,8 +525,11 @@ dist_hq <- function(x1,x2){
 ROCplot_hq <- function(score,y){
         library(ROCR)
         pred <- prediction(score,y)
+        a <- performance(pred,"auc")
+        print(a)
         perf <- performance(pred,"tpr","fpr")
         plot(perf)
+        lines(c(0,1),c(0,1),lty=2)
         #perf <- performance(pred,"auc")
 }
 
